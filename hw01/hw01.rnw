@@ -1,0 +1,383 @@
+\documentclass[11pt]{article}
+\usepackage{fullpage,graphicx,float,amsmath,enumitem,fancyhdr}
+
+\setlist{parsep=5.5pt}
+\setlength{\parindent}{0pt}
+
+\newcommand\assignment{Stat 534 Homework 1}
+\newcommand\myname{Kenny Flagg}
+\newcommand\duedate{January 18, 2017}
+
+\pagestyle{fancy}
+\lhead{\assignment}
+\chead{\duedate}
+\rhead{\myname}
+\setlength{\headheight}{18pt}
+\setlength{\headsep}{2pt}
+
+\title{\assignment}
+\author{\myname}
+\date{\duedate}
+
+\begin{document}
+\maketitle
+
+<<setup, echo = FALSE, message = FALSE, cache = FALSE>>=
+library(knitr)
+library(extrafont)
+opts_chunk$set(echo = TRUE, comment = NA, message = FALSE,
+               show.signif.stars = FALSE,
+               fig.align = 'center', fig.width = 6.5, fig.height = 3,
+               fig.pos = 'H', size = 'footnotesize', dev = 'pdf',
+               dev.args = list(family = 'CM Roman', pointsize = 11))
+knit_theme$set('print')
+
+library(xtable)
+options(xtable.floating = FALSE,
+        xtable.sanitize.rownames.function = function(x) x,
+        xtable.sanitize.colnames.function = function(x) x,
+        width = 80, scipen = 2, show.signif.stars = FALSE)
+
+library(spdep)
+set.seed(-8125)
+@
+
+\begin{enumerate}
+
+\item%1
+{\it Our text implies and others state outright that the \(BB\), \(BW\), and
+\(WW\) statistics reveal pretty much the same thing about spatial correlation.
+The \texttt{joincount.mc} function will carry out Monte Carlo tests based on
+the \(BB\) and \(WW\) statistics. We do not have an R formula for computing the
+\(BW\) statistic but it is possible to carry out a \(BW\) joincount test of
+spatial autocorrelation (or clustering) using Geary's \(c\).}
+
+\begin{enumerate}
+
+\item%a
+{\it Show the relationship between Geary's \(c\) and \(BW\).}
+
+\begin{align*}
+BW&=\frac{1}{2}\sum_{i=1}^{n}\sum_{j=1}^{n}w_{ij}
+(Z(\mathbf{s}_{i})-Z(\mathbf{s}_{j}))^{2} \\
+&=S^{2}w_{..}\left(\frac{1}{2S^{2}w_{..}}\sum_{i=1}^{n}\sum_{j=1}^{n}w_{ij}
+(Z(\mathbf{s}_{i})-Z(\mathbf{s}_{j}))^{2}\right) \\
+&=S^{2}w_{..}c
+\end{align*}
+
+\item%b
+{\it Carry out a test based on the \(BW\) statistics using \texttt{geary.mc}.
+The data file \texttt{atrplx.dat} will be emailed to you at your math
+department email addresses. The first 2 columns contain the spatial coordinates
+and the fourth column contains the \(Z\) values you need. Use the R handout to
+generate the necessary neighbors and list objects.}
+
+<<prob1b, fig.height = 5>>=
+# Read data.
+atrplx <- read.table('atrplx.dat', col.names = c('X', 'Y', 'ignore', 'Z'))
+
+# Get rook adjacency list.
+atrplx.nb <- dnearneigh(as.matrix(atrplx[, c('X', 'Y')]), d1 = 0, d2 = 1)
+
+# Augment with binary-style w[ij].
+atrplx.lw <- nb2listw(atrplx.nb, style = 'B')
+
+# Now do the test.
+atrplx.c <- geary.mc(atrplx$Z, atrplx.lw, 999)
+atrplx.c
+
+# Make a plot.
+hist(atrplx.c$res, breaks = 100, freq = FALSE,
+     xlab = 'c', main = 'Permutation Distribution for Geary\'s c')
+abline(v = atrplx.c$statistic, lwd = 2)
+@
+
+A permutation test with 1,000 permutations results in a p-value of
+\Sexpr{atrplx.c$p.value}, which is not convincing evidence the the plants are
+spatially clustered.
+
+\item%c
+{\it Using the output from \texttt{geary.mc} compute \(BW\) and \(E[BW]\). Do
+you expect \(BW < E[BW]\) or \(BW > E[BW]\) in the presence of positive spatial
+clustering of the plants? Why or why not?}
+
+<<prob1c>>=
+# Sample variance.
+var(atrplx$Z)
+
+# Neighbor information.
+atrplx.lw
+
+# Mean of the permutation distribution.
+mean(atrplx.c$res)
+@
+
+We have \(S^{2}=\Sexpr{signif(var(atrplx$Z), 5)}\), and the number of nonzero
+links tells us that \(w_{..}=\Sexpr{sum(card(atrplx.nb))}\). So
+\begin{equation*}
+BW=\Sexpr{signif(var(atrplx$Z), 5)}\times\Sexpr{sum(card(atrplx.nb))}
+\times\Sexpr{signif(atrplx.c$statistic, 5)}
+=\Sexpr{var(atrplx$Z) * sum(card(atrplx.nb)) * atrplx.c$statistic}.
+\end{equation*}
+Then the expected value is
+\begin{equation*}
+BW=\Sexpr{signif(var(atrplx$Z), 5)}\times\Sexpr{sum(card(atrplx.nb))}
+\times\Sexpr{signif(mean(atrplx.c$res), 5)}
+=\Sexpr{signif(var(atrplx$Z) * sum(card(atrplx.nb)) * mean(atrplx.c$res), 5)}.
+\end{equation*}
+
+Under positive spatial clustering I would expect \(BW < E[BW]\) because
+clustering will place quadrats with plants together, leading to more
+black-black and white-white joins, and fewer black-white joins than would
+occur under if plants were placed completely randomly.
+
+\item%d
+{\it Reproduce the analysis I presented in class using the \emph{Atriplex}
+data. Compare the results of the \(BW\) test to those of the \(BB\) and \(WW\)
+test that were discussed in class. Do these statistics all seem to indicate the
+same thing about spatial clustering of the plants?}
+
+<<prob1d>>=
+atrplx.join <- joincount.mc(factor(atrplx$Z), atrplx.lw, 999)
+atrplx.join
+
+par(mfrow = c(1, 2))
+hist(atrplx.join[[1]]$res, breaks = 50, freq = FALSE,
+     xlab = 'WW', main = 'Permutation Dist. for WW')
+abline(v = atrplx.join[[1]]$statistic, lwd = 2)
+hist(atrplx.join[[2]]$res, breaks = 50, freq = FALSE,
+     xlab = 'BB', main = 'Permutation Dist. for BB')
+abline(v = atrplx.join[[2]]$statistic, lwd = 2)
+@
+
+The \(WW\) test results in a p-value of \Sexpr{atrplx.join[[1]]$p.value},
+no evidence of clustering. However, the \(BB\) test gives a p-value of
+\Sexpr{atrplx.join[[1]]$p.value}, strong evidence of clustering. The p-value
+of the \(BW\) test is in between these values. These tests do not indicate the
+same thing about the distribution of the plants because the \(BB\) statistic
+suggests they are clustered, by the \(WW\) and \(BW\) statistics do not.
+
+\item%e
+{\it For grins compute Moran's \(I\) and compare that result to those above.}
+
+<<prob1e, fig.height = 5>>=
+atrplx.i <- moran.mc(atrplx$Z, atrplx.lw, 999)
+atrplx.i
+
+hist(atrplx.i$res, breaks = 50, freq = FALSE,
+     xlab = 'I', main = 'Permutation Dist. for Moran\'s I')
+abline(v = atrplx.i$statistic, lwd = 2)
+@
+
+With 1,000 permutations, we get a p-value of \Sexpr{atrplx.i$p.value}, which
+gives weak evidence of spatial clustering. This is not as convincing as the
+result of the test based on \(BB\), and definitely inconsisitent with the
+tests based on \(WW\) and \(BW\).
+
+\end{enumerate}
+
+\pagebreak
+\item%2
+{\it Categorize the following examples of spatial data as to their data type:}
+
+\begin{enumerate}
+
+\item%a
+{\it Elevations in the foothills of the Allegheny mountains.}
+
+\textbf{These are geostatistical data.}
+
+\item%b
+{\it Highest elevation within each state in the United States.}
+
+\textbf{These are lattice data.}
+
+\item%c
+{\it Concentration of a mineral in soil.}
+
+\textbf{These are geostatistical data.}
+
+\item%d
+{\it Plot yields in a uniformity trial.}
+
+\textbf{These are lattice data.}
+
+\item%e
+{\it Crime statistics giving names of subdivisions where break-ins occurred in
+the previous year and property loss values.}
+
+If the list only includes the subdivisions where crimes occurred then the list
+itself is random, so \textbf{these are marked point process data.}
+
+\item%f
+{\it Same as previous, but instead of the subdivisions, the individual
+dwelling is identified.}
+
+\textbf{These are marked point process data.}
+
+\item%g
+{\it Distribution of oaks and pines in a forest stand.}
+
+\textbf{These are marked point process data.}
+
+\end{enumerate}
+
+\item%3
+{\it Show that Moran's \(I\) is a scale-free statistic, i.e. \(Z(s)\) and
+\(\lambda Z(s)\) yield the same value for any constant \(\lambda \neq 0\).}
+
+First of all, the mean of \(\lambda Z(\mathbf{s})\) is
+\begin{equation*}
+\frac{\sum_{i=1}^{n}\lambda Z(\mathbf{s}_{i})}{n}=\lambda\overline{Z}
+\end{equation*}
+and the sample variance of \(\lambda Z(\mathbf{s})\) is
+\begin{align*}
+\frac{\sum_{i=1}^{n}(\lambda Z(\mathbf{s}_{i})-\lambda\overline{Z})^{2}}{n-1}
+=\lambda^{2}\frac{\sum_{i=1}^{n}(Z(\mathbf{s}_{i})-\overline{Z})^{2}}{n-1}
+=\lambda^{2}S^{2}.
+\end{align*}
+Then Moran's \(I\) for \(\lambda Z(\mathbf{s})\) is
+\begin{align*}
+\frac{n\sum_{i=1}^{n}\sum_{j=1}^{n}w_{ij}
+(\lambda Z(\mathbf{s}_{i})-\lambda\overline{Z})
+(\lambda Z(\mathbf{s}_{j})-\lambda\overline{Z})}
+{(n-1)\lambda^{2}S^{2}w_{..}}
+&=\frac{n\sum_{i=1}^{n}\sum_{j=1}^{n}w_{ij}\lambda
+(Z(\mathbf{s}_{i})-\overline{Z})\lambda
+(Z(\mathbf{s}_{j})-\overline{Z})}
+{(n-1)\lambda^{2}S^{2}w_{..}} \\
+&=\frac{n\lambda^{2}\sum_{i=1}^{n}\sum_{j=1}^{n}w_{ij}
+(Z(\mathbf{s}_{i})-\overline{Z})
+(Z(\mathbf{s}_{j})-\overline{Z})}
+{(n-1)\lambda^{2}S^{2}w_{..}} \\
+&=\frac{n\sum_{i=1}^{n}\sum_{j=1}^{n}w_{ij}
+(Z(\mathbf{s}_{i})-\overline{Z})
+(Z(\mathbf{s}_{j})-\overline{Z})}
+{(n-1)S^{2}w_{..}} \\
+&= I
+\end{align*}
+which is Moran's \(I\) for \(Z(\mathbf{s})\), so Moran's \(I\) is scale-free.
+
+\item%4
+{\it Let \(Y_{1},\dots, Y_{n}\) be normally distributed with unknown mean
+\(\mu\) and known variance \(\sigma^{2}\). Let
+\(Cov(Y_{i}, Y_{j}) = \sigma^{2}\rho\) for \(i \neq j\). We will further assume
+that \(ρ > 0\).}
+
+\begin{enumerate}
+
+\item%a
+{\it Show that} \(\displaystyle
+Var\left(\overline{Y}\right)=\frac{\sigma^{2}}{n}\left[1+(n-1)\rho\right]\).
+
+Note that there are \(n^{2}-n\) pairs \((i,j)\) such that \(i\neq j\). So,
+\begin{align*}
+Var\left(\overline{Y}\right)&=Var\left(\frac{\sum_{i=1}^{n}}{n}\right) \\
+&=\frac{Var\left(\sum_{i=1}^{n}\right)}{n^{2}} \\
+&=\frac{\sum_{i=1}^{n}\sum_{j=1}^{n}Cov(Y_{i},Y_{j})}{n^{2}} \\
+&=\frac{\sum_{i=1}^{n}Var(Y_{i})+\sum_{i\neq j}Cov(Y_{i},Y_{j})}{n^{2}} \\
+&=\frac{n\sigma^{2}+(n^{2}-n)\sigma^{2}\rho}{n^{2}} \\
+&=\frac{\sigma^{2}}{n}[1+(n-1)\rho].
+\end{align*}
+
+\item%b
+{\it Let \(n = 10\) and \(\rho = 0.26\). Compare and contrast a 95\% confidence
+interval for \(\mu\) computed using the true standard deviation of
+\(\overline{Y}\) and one computed assuming independence.}
+
+\textbf{Using the true standard deviation:}
+\begin{equation*}
+\overline{Y}\pm 1.96\frac{\sigma^2}{10}\left[1+9\times 0.26\right]
+=\overline{Y}\pm 0.65464\sigma^2
+\end{equation*}
+
+\textbf{Assuming independence:}
+\begin{equation*}
+\overline{Y}\pm 1.96\frac{\sigma^2}{10}
+=\overline{Y}\pm 0.196\sigma^2
+\end{equation*}
+
+The confidence interval computed using the true standard deviation is quite a
+bit wider than the confidence interval computed assuming independence. Ignoring
+the correlation in this case means we will think our estimates are more
+precise than they actually are.
+
+
+\item%c
+{\it Given independence, we know that \(\overline{Y}\) is the ``best''
+estimator of \(\mu\). One nice property it has is that it is a consistent
+estimator of the mean. Is \(\overline{Y}\) a consistent estimator of the mean
+given the correlation structure above? Justify your answer.}
+
+No, \(\overline{Y}\) is not consistent in this situation. Consistency is
+convergence in probability to the quantity of interest, which, by definition
+5.5.1 in Casella and Berger, is
+\begin{equation*}
+\lim_{n\to\infty}P\left(|\overline{Y}-\mu|\geq\epsilon\right)=0
+\end{equation*}
+for all \(\epsilon>0\). This is not possible because
+\begin{equation*}
+\lim_{n\to\infty}Var(\overline{Y})
+=\lim_{n\to\infty}\frac{\sigma^{2}}{n}[1+(n-1)\rho]
+=\frac{\sigma^{2}\rho}{n}
+\end{equation*}
+is greater than zero if \(\rho>0\).
+
+\item%d
+{\it Recall that effective sample size is a measure of the effect of
+correlation on inference. An equation for the effective sample size under the
+equicorrelation model is}
+\begin{equation*}
+n'=\frac{n}{1+(n-1)\rho}
+\end{equation*}
+{\it The effective sample size is defined to be the sample size \(n\) of
+uncorrelated observations that provide the same information (in a sense) as a
+sample of \(n\) correlated observations.}
+
+\begin{enumerate}
+
+\item%i
+{\it Compute the effective sample size when \(n\) = 10, 100, and 1000 and
+\(\rho\) = 0.05, 0.1, 0.25, and 0.5.}
+
+<<prob4di, eval = FALSE>>=
+n <- matrix(rep(c(10, 100, 1000), 4), ncol = 4,
+            dimnames = list(paste('\\(n\\) =', c(10, 100, 1000)),
+                            paste('\\(\\rho\\) =', c(0.05, 0.1, 0.25, 0.5))))
+rho <- matrix(rep(c(0.05, 0.1, 0.25, 0.5), each = 3), ncol = 4,
+              dimnames = list(paste('\\(n\\) =', c(10, 100, 1000)),
+                              paste('\\(\\rho\\) =', c(0.05, 0.1, 0.25, 0.5))))
+nprime <- n / (1 + (n - 1) * rho)
+xtable(nprime, digits = 4, align = '|r|rrrr|')
+@
+{\centering
+<<prob4di, echo = FALSE, results = 'asis'>>=
+@
+}
+
+\item%ii
+{\it Find \(\lim n'\) as \(n \to \infty\).}
+
+Solution:
+\begin{align*}
+\lim_{n\to\infty}n'&=\lim_{n\to\infty}\frac{n}{1+(n-1)\rho} \\
+&=\lim_{n\to\infty}\frac{n}{1+n\rho-\rho} \\
+&=\frac{1}{\rho}
+\end{align*}
+
+\item%iii
+{\it The effect is extreme here but we would not expect to see this type of
+correlation structure in a spatial setting. Why not?}
+
+Tobler's First Law of Geography: ``Everything is related to everything else,
+but near things are more related than distant things.'' The setting in this
+problem ignores distance, making distant locations just as correlated as nearby
+locations. This is not how things usually work in reality.
+
+\end{enumerate}
+
+\end{enumerate}
+
+\end{enumerate}
+
+\end{document}
