@@ -1,0 +1,340 @@
+\documentclass[11pt]{article}
+\usepackage{fullpage,graphicx,float,amsmath,enumitem,fancyhdr}
+
+\setlist{parsep=5.5pt}
+\setlength{\parindent}{0pt}
+
+\newcommand\assignment{Stat 534 Homework 2}
+\newcommand\myname{Kenny Flagg}
+\newcommand\duedate{January 26, 2017}
+
+\pagestyle{fancy}
+\lhead{\assignment}
+\chead{\duedate}
+\rhead{\myname}
+\setlength{\headheight}{18pt}
+\setlength{\headsep}{2pt}
+
+\title{\assignment}
+\author{\myname}
+\date{\duedate}
+
+\begin{document}
+\maketitle
+
+<<setup, echo = FALSE, message = FALSE, cache = FALSE>>=
+library(knitr)
+library(extrafont)
+opts_chunk$set(echo = TRUE, comment = NA, message = FALSE,
+               show.signif.stars = FALSE,
+               fig.align = 'center', fig.width = 6.5, fig.height = 3,
+               fig.pos = 'H', size = 'footnotesize', dev = 'pdf',
+               dev.args = list(family = 'CM Roman', pointsize = 11))
+knit_theme$set('print')
+
+library(xtable)
+options(xtable.floating = FALSE,
+        xtable.sanitize.rownames.function = function(x) x,
+        xtable.sanitize.colnames.function = function(x) x,
+        width = 80, scipen = 2, show.signif.stars = FALSE)
+
+set.seed(6815)
+library(spatstat)
+data(redwood)
+@
+
+\begin{enumerate}
+
+\item%1
+{\it It was pointed out in class that, conditional on \(n\) events, event
+locations are uniformly distributed for a homogeneous Poisson process. We will
+consider the simplest example of this. Consider a one-dimensional process on a
+transect of length \(L\), \((0, L]\). Given that one event has occurred on the
+interval \((0, L]\) what is the probability that it occurred in the subinterval
+\((0, s]\) for \(s < L\)?}
+
+Let \(X\) be the location of the event. Then
+\(X|N((0, L]) = 1\sim\mathrm{Unif}(0, L)\). So
+\begin{equation*}
+P(0 < X \leq s|N((0, L]) = 1) = \int_{0}^{s}\frac{1}{L}ds = \frac{s}{L}.
+\end{equation*}
+
+\item%2
+{\it We looked at an example of \texttt{quadrat.test} on the amacrine data set
+in class. We will use it to analyze another data set, called \texttt{redwood}.
+You can read about this in the \texttt{spatstat} help material. You will be
+using the \texttt{quadrat.test} function. You can also read about this function
+in the help material.}
+
+\begin{enumerate}
+
+\item%a
+{\it Read the help pages on the \texttt{quadrat.test} function. What null
+hypothesis do they claim to be testing?}
+
+<<prob2a, eval = FALSE>>=
+require(spatstat)
+data(redwood)
+help(redwood) # optional information on the data set
+help(quadrat.test)
+@
+
+The help file says pretty clearly that ``we test the null hypothesis that the
+data pattern is a realisation of Complete Spatial Randomness (the uniform
+Poisson point process).''
+
+\item%b
+{\it Use \texttt{quadrat.test} on the redwood data set.}
+
+<<prob2b1>>=
+redwood.fit <- quadrat.test(redwood)
+redwood.fit
+@
+
+The quadrat test on a \(5 \times 5\) grid yields a test statistic of
+\(\chi^{2}_{\Sexpr{redwood.fit$parameter}}
+= \Sexpr{sprintf('%.3f', redwood.fit$statistic)}\) with a p-value of
+\(\Sexpr{format.pval(redwood.fit$p.value, 4, 0.0001)}\), very strong evidence
+that the locations of the redwood trees do not follow complete spatial
+randomness.
+
+{\it The default partitioning of the grid is 5 \(\times\) 5. Does that appear
+appropriate here? Justify your answer.}
+
+R gave a warning that some of the grid cells had small expected counts, so the
+\(5 \times 5\) grid is too fine for these data. Bigger grid cells would be
+better.
+
+\item%c
+{\it Redo the analysis using a 3 \(\times\) 3 grid.}
+
+<<prob2c>>=
+redwood.fit <- quadrat.test(redwood, nx = 3, ny = 3)
+redwood.fit
+@
+
+This time we don't get a warning message, so the expected cell counts in the
+larger grid cells are big enough to use the \(\chi^{2}\) distribution. The
+quadrat test on a \(3 \times 3\) grid yields a test statistic of
+\(\chi^{2}_{\Sexpr{redwood.fit$parameter}}
+= \Sexpr{sprintf('%.3f', redwood.fit$statistic)}\) with a p-value of
+\(\Sexpr{sprintf('%.4f', redwood.fit$p.value)}\), still very strong evidence
+that the locations of the redwood trees do not follow complete spatial
+randomness.
+
+\item%d
+{\it Is the value of the test statistic \(X^{2}\) indicative of clustering,
+CSR, or a regular pattern? Justify your answer. Note that I am only asking you
+to compare the observed value of \(X^{2}\) to what you would expect under each
+of these three patterns. You do not need to calculate a P-value just yet.}
+
+Under the null hypothesis, the test statistic follows a
+\(\chi^{2}_{\Sexpr{redwood.fit$parameter}}\) with mean
+\Sexpr{redwood.fit$parameter}. The observed value of
+\Sexpr{sprintf('%.3f', redwood.fit$statistic)} is larger, indicating greater
+than excepted variability in quadrat counts which suggests clustering.
+
+\item%e
+{\it The investigator suspected a clustered pattern and the plot would seem to
+be consistent with this. Rerun the test with \texttt{alternative="c"} in the
+argument list. Give the p-value for the test and interpret the results. Does
+the test provide evidence against CSR and for clustering? Justify your answer.}
+
+<<prob2d>>=
+redwood.fit <- quadrat.test(redwood, nx = 3, ny = 3, alternative = 'c')
+redwood.fit
+@
+
+The quadrat test on a \(3 \times 3\) grid with a test statistic of
+\(\chi^{2}_{\Sexpr{redwood.fit$parameter}}
+= \Sexpr{sprintf('%.3f', redwood.fit$statistic)}\) has a one-sided p-value of
+\(\Sexpr{sprintf('%.4f', redwood.fit$p.value)}\), very strong evidence that
+the locations of the redwood trees are clustered.
+
+\item%f
+{\it We can plot the results of the fit.}
+
+<<prob>>=
+par(mar = c(0, 0, 0.5, 0))
+plot(redwood.fit)
+points(redwood, pch = 16, col = '#00000040') # Add semitransparent points for fun!
+@
+
+{\it You will see a plot of the 3 \(\times\) 3 grid. There are 3 numbers in
+each cell: the observed count (upper left), expected count under CSR (upper
+right), and a scaled residual (lower number). The sum of the scaled residuals
+is the \(X^{2}\) statistic. Give the results of the test and using the plot
+indicate where CSR seems to break down, if it does.}
+
+The one-sided p-value of \(\Sexpr{sprintf('%.4f', redwood.fit$p.value)}\)
+provides very strong evidence that trees are clustered. The upper-left and
+center-right cells have fewer trees than expected under CSR, with
+large-magnitude negative residuals. The center-left and upper-right cells
+have large positive residuals, indicating that these cells contain relatively
+dense clusters.
+
+\pagebreak
+\item%g
+{\it Quadrat size can be important. Repeat the analysis using a 2 \(\times\) 2
+grid. Give the results and compare to what we saw with the 3 \(\times\) 3
+grid.}
+
+<<prob2g>>=
+redwood.fit <- quadrat.test(redwood, nx = 2, ny = 2)
+redwood.fit
+@
+
+The quadrat test on a \(2 \times 2\) grid yields a test statistic of
+\(\chi^{2}_{\Sexpr{redwood.fit$parameter}}
+= \Sexpr{sprintf('%.3f', redwood.fit$statistic)}\) with a two-sided p-value of
+\(\Sexpr{sprintf('%.4f', redwood.fit$p.value)}\), which is no evidence against
+complete spatial randomness and contradicts the results of the test on the
+\(3 \times 3\) grid.
+
+\end{enumerate}
+
+\item%3
+{\it We will compare results from Monte Carlo procedures based on Poisson
+sampling and based on conditioning on the number of observed points. We will
+use the \texttt{cells} data set. The R code to accomplish that is shown below.
+Compare the two procedures. What do they indicate about the spatial pattern and
+why? Which procedure do you like best for this data set and why?}
+
+<<prob3, fig.height = 5.5>>=
+data(cells)
+hbar <- mean(nndist(cells))
+hbar
+hbar.pois <- rep(0, 1000)
+hbar.cond <- rep(0, 1000)
+hbar.pois[1] <- hbar
+hbar.cond[1] <- hbar
+for(i in 2:1000){
+  # Poisson Monte Carlo
+  dat.pois <- rpoispp(42)
+  hbar.pois[i] <- mean(nndist(dat.pois))
+  # Conditional Monte Carlo
+  dat.cond <- runifpoint(42)
+  hbar.cond[i] <- mean(nndist(dat.cond))
+}
+par(mfrow = c(2, 1))
+hist(hbar.pois, prob = TRUE, xlim = c(0.05, 0.13), main = 'Poisson Monte Carlo')
+abline(v = hbar)
+hist(hbar.cond, prob = TRUE, xlim = c(0.05, 0.13), main = 'Conditional Monte Carlo')
+abline(v = hbar)
+# Poisson P-value
+2 * sum(hbar.pois >= hbar) / 1000
+# Conditional P-value
+2 * sum(hbar.cond >= hbar) / 1000
+@
+
+Both methods give similar p-values of about 0.002, very strong evidence against
+complete spatial randomness. (The observed average nearest neighbor distance
+is larger than expected under the null, implying regularity.) The null
+distribution for the Poison Monte Carlo method is has a larger spread than the
+null distribution for the conditional Monte Carlo method, reflecting
+variability in the number of events. For this dataset, the conditional method
+is more appropriate because the researcher chose the cells to look at and then
+rescaled the viewing window to the unit square. Therefore it is appropriate to
+consider permutations of these 42 cells rather than simulating new realizations
+with random numbers of cells.
+
+\item%4
+{\it Below is the frequency distribution of the number of trees per quadrat in
+a sample of 100 quadrats each of radius 6 m.}
+\begin{center}\begin{tabular}{c|cccccc}
+Trees per quadrat & 0 & 1 & 2 & 3 & 4 & \(\geq 5\) \\
+\hline
+Count & 34 & 33 & 17 & 7 & 3 & 6
+\end{tabular}\end{center}
+{\it The data were pooled for counts \(\geq 5\) to meet the assumptions of the
+method. Carry out a Poisson goodness-of-fit test based on an assumption of CSR.
+Discuss the results. The sample mean of the observed counts was 1.43.}
+
+<<prob4>>=
+# Observed number of quadrats in each bin.
+Observed <- c(`0` = 34, `1` = 33, `2` = 17, `3` = 7, `4` = 3, `>=5` = 6)
+
+# Expected number of quadrats in each bin.
+Expected <- 100 * c(dpois(0:4, 1.43), ppois(4, 1.43, lower.tail = FALSE))
+
+rbind(Observed, Expected)
+
+X2 <- sum((Observed - Expected)^2 / Expected)
+X2
+pchisq(X2, 4, lower.tail = FALSE)
+@
+
+With a test statistic of \(\chi^{2}_{4}
+= \Sexpr{sprintf('%.3f', X2)}\) and a p-value of
+\Sexpr{sprintf('%.4f', pchisq(X2, 4, lower.tail = FALSE))}
+there is very strong evidence that the quadrat counts do not come from a
+\(\mathrm{Poisson}(1.43)\) distribution. The test result does not indicate
+what type of spatial pattern the data follow, but we observed more counts of
+zero and more counts \(\geq\) 5 than expected under CSR, which suggests
+clustering.
+
+\pagebreak
+\item%5
+{\it Suppose we have a realization of a spatial point process consisting of
+\(N\) event locations \(\{s_{1}, s_{2},\dots, s_{N}\}\). Let \(H_{i}\) denote
+the distance between the \(i\)th event and the nearest neighboring event. The
+cumulative distribution function of \(H\) (the nearest event-event distance) is
+the \(G\) function. (This problem will be continued on the next homework
+assignment).}
+
+\begin{enumerate}
+
+\item%a
+{\it What is the \(G\) function if the point process is CSR; i.e. what is
+\(G(h) = P(H \leq h)\)?}
+
+\begin{align*}
+G(h) &= P(H \leq h) \\
+&= P(\text{at least 1 event in a circle of radius }h) \\
+&= 1 - P(\text{0 events in a circle of radius }h) \\
+&= 1 - \frac{e^{-\lambda \pi h^{2}} \lambda^{0}}{0!} \\
+&= 1 - e^{-\lambda \pi h^{2}},\quad h > 0
+\end{align*}
+
+\item%b
+{\it Find the pdf of \(H\).}
+
+\begin{align*}
+f_{H}(h) = \frac{dG(h)}{dh} = 2\lambda \pi h e^{-\lambda \pi h^{2}},
+\quad h > 0
+\end{align*}
+
+
+\item%c
+{\it Find \(E(H)\) and \(Var(H)\). Hint: you found the pdf but before you start
+evaluating a gnarly integral take a close look at that pdf and see if you
+cannot identify the family of distributions it belongs to. If you can do that
+then you can use that knowledge to find the mean and variance.}
+
+\(H\) follows a Weibull distribution with (in the parameterization of Casella
+and Berger) \(\gamma = 2\) and \(\displaystyle\beta = \frac{1}{\lambda\pi}\).
+This distribution has mean
+\begin{equation*}
+E(H) = \beta^{\frac{1}{\gamma}}\Gamma\left(1+\frac{1}{\gamma}\right)
+= \frac{1}{\sqrt{\lambda\pi}}\Gamma\left(\frac{3}{2}\right)
+= \frac{1}{\sqrt{\lambda\pi}}\frac{1}{2}\Gamma\left(\frac{1}{2}\right)
+= \frac{1}{\sqrt{\lambda\pi}}\frac{1}{2}\sqrt{\pi}
+= \frac{1}{2\sqrt{\lambda}}
+\end{equation*}
+and variance
+\begin{align*}
+Var(H) &= \beta^{\frac{2}{\gamma}}
+\left[\Gamma\left(1+\frac{2}{\gamma}\right)
+-\Gamma^{2}\left(1+\frac{1}{\gamma}\right)\right] \\
+&= \frac{1}{\lambda\pi}\left[\Gamma(2)
+-\Gamma^{2}\left(\frac{3}{2}\right)\right] \\
+&= \frac{1}{\lambda\pi}\left[1-\left(\frac{\sqrt{\pi}}{2}\right)^{2}\right] \\
+&= \frac{1}{\lambda\pi}\left[1-\frac{\pi}{4}\right].
+\end{align*}
+
+\end{enumerate}
+
+\end{enumerate}
+
+\end{document}
+
