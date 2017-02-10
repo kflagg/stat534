@@ -1,0 +1,281 @@
+\documentclass[11pt]{article}
+\usepackage{fullpage,graphicx,float,amsmath,enumitem,fancyhdr}
+
+\setlist{parsep=5.5pt}
+\setlength{\parindent}{0pt}
+
+\newcommand\assignment{Stat 534 Homework 4}
+\newcommand\myname{Kenny Flagg}
+\newcommand\duedate{February 10, 2017}
+
+\pagestyle{fancy}
+\lhead{\assignment}
+\chead{\duedate}
+\rhead{\myname}
+\setlength{\headheight}{18pt}
+\setlength{\headsep}{2pt}
+
+\title{\assignment}
+\author{\myname}
+\date{\duedate}
+
+\begin{document}
+\maketitle
+
+<<setup, echo = FALSE, message = FALSE, cache = FALSE>>=
+library(knitr)
+library(extrafont)
+opts_chunk$set(echo = TRUE, comment = NA, message = FALSE,
+               show.signif.stars = FALSE,
+               fig.align = 'center', fig.width = 6.5, fig.height = 3,
+               fig.pos = 'H', size = 'footnotesize', dev = 'pdf',
+               dev.args = list(family = 'CM Roman', pointsize = 11))
+knit_theme$set('print')
+
+library(xtable)
+options(xtable.floating = FALSE,
+        xtable.sanitize.rownames.function = function(x) x,
+        xtable.sanitize.colnames.function = function(x) x,
+        width = 80, scipen = 2, show.signif.stars = FALSE)
+
+set.seed(2753)
+@
+
+\begin{enumerate}
+
+\item%1
+{\it For \(\lambda = 30\) generate 9 realizations of CSR on the unit square.
+For each realization, construct a kernel estimate of \(\lambda(s)\). How do
+the estimated intensity functions compare to the constant intensity under CSR?
+What precautions does this exercise suggest with regard to interpreting
+estimates of intensity from a single realization (or data set)? The following
+R code will simultaneously produce the data and plots.}
+<<prob1, fig.height = 4>>=
+library(spatstat, quiet = TRUE)
+par(mfrow = c(3, 3), mar = c(0, 0, 1, 1), cex = 1)
+for(i in 1:9) plot(density(rpoispp(30)), zlim = c(0, 140)) # zlim sets the color scale.
+@
+The estimated intensity functions do not look constant. Most of them have some
+hotspots where the estimated intensity is at least 60, and most also have some
+cold spots where there are few points so the estimated intensity is close to
+zero. This suggests we shouldn't make much out of our estimated intensity
+surface unless we have other information suggesting the process really is
+heterogeneous, and even then we should be aware that there may be a lot of
+uncertainty around the estimate.
+
+\item%2
+{\it In class we looked at a heterogeneous Poisson process on the unit square
+with with intensity function}
+\begin{equation*}
+\lambda(x,y) = \exp(5x + 2y).
+\end{equation*}
+
+\begin{enumerate}
+
+\item%a
+{\it Simulate a realization of the process using the following R code. Plot
+the results and comment.}
+<<prob2a, fig.height = 2.5>>=
+sim.dat <- rpoispp(function(x, y){exp(5 * x + 2 * y)})
+par(mar = c(0, 0, 0.5, 0))
+plot(sim.dat)
+@
+The plot looks about how I expected it to look. There are few events at the
+bottom left, many events at the top right, a noticeable increase in event
+intensity from left to right, and a subtle increase in intensity from bottom to
+top (easily seen at the right edge).
+
+\item%b
+{\it Plot simulation envelopes for the \(K\) function (or some suitable
+modification of it) and comment.}
+<<prob2b>>=
+par(mar = c(4, 4, 1, 4))
+plot(envelope(sim.dat, Kest, verbose = FALSE), legend = FALSE)
+@
+The empirical \(K\) function stays far outside of the simulation envelope for
+all distances except very small ones. There tend to be more events within a
+given distance than expected under CSR, but this is not the same pattern we've
+seen for clustered processes, where the \(K\) function is large for small
+distances but similar to the CSR \(K\) function for larger distances. This
+\(K\) function is close to the CSR \(K\) function at small distances, but moves
+away from the value expected under CSR for larger distances because, for most
+locations, any region other than a small neighborhood will include points with
+higher intensity.
+
+\item%c
+{\it Fit a trend model to your data using ppm. Provide me with the parameter
+estimates and associated standard errors.}
+<<prob2c>>=
+sim.fit <- ppm(sim.dat, ~ x + y, correction = 'isotropic')
+sim.fit
+@
+The coefficient estimates, \(\widehat{\beta}_{0} =
+\Sexpr{signif(coef(sim.fit)['(Intercept)'], 3)}\) (SE =
+\Sexpr{signif(sqrt(vcov(sim.fit)['(Intercept)', '(Intercept)']), 3)}),
+\(\widehat{\beta}_{x} = \Sexpr{signif(coef(sim.fit)['x'], 3)}\)
+(SE = \Sexpr{signif(sqrt(vcov(sim.fit)['x', 'x']), 3)}) and
+\(\widehat{\beta}_{y} = \Sexpr{signif(coef(sim.fit)['y'], 3)}\) (SE =
+\Sexpr{signif(sqrt(vcov(sim.fit)['y', 'y']), 3)}), are pretty close to the
+true values, with the true values being in the 95\% confidence intervals.
+
+\item%d
+{\it Check the fit using \texttt{quadrat.test}. Use
+\texttt{method="MonteCarlo"} instead of the large sample chi-squared test.
+Plot the results. Discuss.}
+<<prob2d, fig.width = 5>>=
+sim.qtest <- quadrat.test(sim.fit, method = 'MonteCarlo')
+sim.qtest
+par(mar = c(0, 0, 1, 0))
+plot(sim.qtest)
+points(sim.dat, pch = 19, col = '#00000040')
+@
+The p-value of \Sexpr{sim.qtest$p.value} is small enough to make you think, but
+provides at best weak evidence that the model is a poor fit. The only standardized residuals with absolute value \(>\) 2 are in the leftmost column of quadrats
+and one right in the center. I wouldn't worry about the left edge because the
+expected counts are so close to zero that even 1 event would have a big
+residual. In the center, the cluster of points with the standardized residual
+of 3 isn't all that unusual because any points in a low-intensity region are
+going to stand out. If I encountered these data in the field I would see if a
+more complicated surface would fit better, but overall the model fits pretty
+well. With 25 quadrats, some of them are bound to be in the tails of the
+distribution.
+
+\item%e
+{\it Compare these results from this model with those to a model fit under an
+assumption of CSR. Summarize the results. Provide me the model comparison
+results (AIC comparisons are fine).}
+<<prob2e>>=
+sim.csr <- ppm(sim.dat, ~ 1, correction = 'isotropic')
+sim.csr
+AIC(sim.csr)
+AIC(sim.fit)
+@
+The CSR model (intercept-only) assumes a constant intensity, estimated to be
+\(\widehat{\lambda} = \exp(\Sexpr{signif(coef(sim.csr), 3)}) =
+\Sexpr{signif(exp(coef(sim.csr)), 3)}\) with a 95\%
+confidence interval of \(\exp(4.28)=\Sexpr{signif(exp(4.280881), 3)}\) to
+\(\exp(4.70)=\Sexpr{signif(exp(4.696392), 3)}\). The heterogeneous model
+fits much better, with an improvement in AIC of
+\(\Sexpr{signif(AIC(sim.csr)-AIC(sim.fit), 5)}\).
+
+\item%f
+{\it Plot a nonparametric estimate of the intensity function. Compare the
+fitted surface you got using \texttt{ppm} with the nonparametric (kernel
+density estimate) surface in some suitable way.}
+
+<<prob2f, fig.height = 2.5, results = 'hide'>>=
+par(mfrow = c(1, 2), mar = c(0, 0, 1, 0))
+plot(density(sim.dat))
+diagnose.ppm(sim.fit, which = 'smooth')
+@
+The plot on the left shows a kernel density estimate of the intensity surface,
+and the plot on the right shows the smoothed residuals, computed as the fitted
+intensity surface minus a kernel density estimate. The residuals have bands
+alternating positive and negative, indicating that the model missed some
+of the patterns in the data.
+
+\end{enumerate}
+
+\item%3
+{\it Recall the use of the \texttt{nncorr} statistic in the Finland Pines data
+set. The distribution of heights (the marks) was of interest. We saw that the
+nearest neighbor correlation between heights was −0.1839798. We questioned
+whether or not this was unusual. Carry out a randomization test to assess
+this. You can use the \texttt{rlabel} command to scramble the marks if you
+want. Provide me with a histogram of the randomization distribution and a
+p-value. Discuss \textbf{BRIEFLY} your results. Provide me with your R-code,
+also.}
+<<prob3, fig.width = 5.75>>=
+finpines.ht <- finpines
+marks(finpines.ht) <- marks(finpines)$height
+obs_corr <- nncorr(finpines.ht)['correlation']
+perm_corr <- c(obs_corr, replicate(999, nncorr(rlabel(finpines.ht))['correlation']))
+hist(perm_corr, breaks = 100, freq = FALSE, xlab = 'Correlation',
+     main = 'Permutation Distribution of Nearest Neighbor Correlation')
+abline(v = obs_corr)
+pval <- 2 * mean(perm_corr <= obs_corr)
+pval
+@
+999 permutations yield an approximately symmetric permutation distributon, so
+doubling the left-tail p-value results in a two-sided p-value of
+\Sexpr{pval} giving no evidence that the heights or nearest neighbors are
+correlated.
+
+\item%4
+{\it Let's derive a \(K\) function for something other than a CSR process. We
+will assume a Neyman-Scott process with the following properties.}
+\begin{enumerate}[label=\roman*.]
+\item {\it The parent process is a homogeneous Poisson process with intensity
+\(\lambda\).}
+\item {\it The number of offspring produced by each parent (\(N\)) is
+homogeneous Poisson with intensity \(\mu\).}
+\item {\it The position of each offspring is determined by a bivariate normal
+distribution with mean \((0, 0)\) (i.e. it is centered over the parent) and
+variance-covariance matrix \(\sigma^{2}\mathbf{I}\). Note that this implies
+that the \(x\) and \(y\) coordinates are determined independently of one
+another with the same variance.}
+\end{enumerate}
+{\it Consider 2 offspring from the same parent located at \((X_{1},Y_{1})\)
+and \((X_{2},Y_{2})\).}
+
+\begin{enumerate}
+
+\item%a
+{\it What is the distribution of}
+\begin{equation*}
+W=\frac{(X_{1}-X_{2})^{2}}{2\sigma^{2}}+\frac{(Y_{1}-Y_{2})^{2}}{2\sigma^{2}}?
+\end{equation*}
+\(X_{1}\), \(X_{2}\), \(Y_{1}\), and \(Y_{2}\) are all independent
+\(\mathrm{N}(0, \sigma^{2})\), so \(X_{1}-X_{2}\) and \(Y_{1}-Y_{2}\) are
+independent \(\mathrm{N}(0, 2\sigma^{2})\). Then
+\(\dfrac{(X_{1}-X_{2})^{2}}{2\sigma^{2}}\) and
+\(\dfrac{(Y_{1}-Y_{2})^{2}}{2\sigma^{2}}\) are independent \(\chi^{2}_{1}\).
+Therefore, \(W \sim \chi^{2}_{2}\).
+
+\item%b
+{\it Note that the Euclidean distance between the 2 points is}
+\begin{equation*}
+H=\left[(X_{1}-X_{2})^{2}+(Y_{1}-Y_{2})^{2})\right]^{1/2}
+=\left(2\sigma^{2}W\right)^{1/2}.
+\end{equation*}
+{\it Derive the cdf of H.}
+\begin{align*}
+F(h) &= P(H \leq h) \\
+&= P\left(\left(2\sigma^{2}W\right)^{1/2} \leq h\right) \\
+&= P\left(W \leq \frac{h^{2}}{2\sigma^{2}}\right) \\
+&= \int_{0}^{\frac{h^{2}}{2\sigma^{2}}} \frac{t^{0}e^{-\frac{t}{2}}}
+{\Gamma\left(1\right)2^{1}} \mathrm{d}t \\
+&= \int_{0}^{\frac{h{2}}{2\sigma^{2}}} \frac{1}{2}e^{-\frac{t}{2}}
+\mathrm{d}t \\
+&= \left[-e^{-\frac{t}{2}}\right]_{t=0}^{\frac{h^{2}}{2\sigma^{2}}} \\
+&= 1 - \exp\left(-\frac{h^{2}}{4\sigma^{2}}\right)
+\end{align*}
+
+\item%c
+{\it Recall that we were told that the \(K\) function for Neyman-Scott
+processes with homogeneous Poisson parent processes and radially symmetric
+\(f(h)\) is}
+\begin{equation*}
+K(h)=\pi h^{2} + \frac{E(N(N-1))}{\lambda E(N)^2}F(h).
+\end{equation*}
+{\it Use the results from above to find the K function for the described
+process.}
+\begin{align*}
+K(h) &= \pi h^{2} + \frac{E(N(N-1))}{\lambda E(N)^{2}}
+\left(1-\exp\left(-\frac{h^{2}}{4}\right)\right) \\
+&= \pi h^{2} + \frac{E(N^{2})-E(N)}{\lambda E(N)^{2}}
+\left(1-\exp\left(-\frac{h^{2}}{4}\right)\right) \\
+&= \pi h^{2} + \frac{Var(N)+E(N)^{2}-E(N)}{\lambda E(N)^{2}}
+\left(1-\exp\left(-\frac{h^{2}}{4}\right)\right) \\
+&= \pi h^{2} + \frac{\mu+\mu^{2}-\mu}{\lambda\mu^{2}}
+\left(1-\exp\left(-\frac{h^{2}}{4}\right)\right) \\
+&= \pi h^{2} + \frac{1}{\lambda}
+\left(1-\exp\left(-\frac{h^{2}}{4}\right)\right) \\
+\end{align*}
+
+\end{enumerate}
+
+\end{enumerate}
+
+\end{document}
+
