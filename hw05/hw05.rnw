@@ -1,0 +1,407 @@
+\documentclass[11pt]{article}
+\usepackage{fullpage,graphicx,float,amsmath,enumitem,fancyhdr}
+
+\setlist{parsep=5.5pt}
+\setlength{\parindent}{0pt}
+
+\newcommand\assignment{Stat 534 Homework 5}
+\newcommand\myname{Kenny Flagg}
+\newcommand\duedate{February 17, 2017}
+
+\pagestyle{fancy}
+\lhead{\assignment}
+\chead{\duedate}
+\rhead{\myname}
+\setlength{\headheight}{18pt}
+\setlength{\headsep}{2pt}
+
+\title{\assignment}
+\author{\myname}
+\date{\duedate}
+
+\begin{document}
+\maketitle
+
+<<setup, echo = FALSE, message = FALSE, cache = FALSE>>=
+library(knitr)
+library(extrafont)
+opts_chunk$set(echo = TRUE, comment = NA, message = FALSE,
+               show.signif.stars = FALSE,
+               fig.align = 'center', fig.width = 6.5, fig.height = 4,
+               fig.pos = 'H', size = 'footnotesize', dev = 'pdf',
+               dev.args = list(family = 'CM Roman', pointsize = 11))
+knit_theme$set('print')
+
+library(xtable)
+options(xtable.floating = FALSE,
+        xtable.sanitize.rownames.function = function(x) x,
+        xtable.sanitize.colnames.function = function(x) x,
+        xtable.include.rownames = FALSE,
+        width = 80, scipen = 2, show.signif.stars = FALSE)
+
+set.seed(123)#set.seed(25277)
+@
+
+\begin{enumerate}
+
+\item%1
+{\it Let \(\gamma(\mathbf{s}_{i}, s_{j}) = \gamma(\mathbf{h}_{ij})\) be a
+semivariogram for a second-order stationary spatial process.}
+
+\begin{enumerate}
+
+\item%a
+{\it Show that \(\gamma(\mathbf{h}_{ij})=C(\mathbf{0})-C(\mathbf{h}_{ij})\).}
+\begin{align*}
+\gamma(\mathbf{h}_{ij})
+&= \frac{1}{2} Var\left[Z(\mathbf{s}_{i}) - Z(\mathbf{s}_{j})\right] \\
+&= \frac{1}{2} \left[Var(Z(\mathbf{s}_{i})) + Var(Z(\mathbf{s}_{j}))
+- 2 Cov(Z(\mathbf{s}_{i}), Z(\mathbf{s}_{j}))\right] \\
+&= \frac{1}{2} Var(Z(\mathbf{s}_{i})) + \frac{1}{2} Var(Z(\mathbf{s}_{j}))
+- Cov(Z(\mathbf{s}_{i}), Z(\mathbf{s}_{j})) \\
+&= \frac{1}{2} C(\mathbf{0}) + \frac{1}{2} C(\mathbf{0})
+- C(\mathbf{s}_{i} - \mathbf{s}_{j}) \\
+&= C(\mathbf{0}) - C(\mathbf{h}_{ij})
+\end{align*}
+\item%b
+{\it Show that \(\displaystyle
+\sum_{i=1}^{n}\sum_{j=1}^{n} a_{i}a_{j}\gamma(\mathbf{h}_{ij}) \leq 0\)
+for any sites \(\mathbf{s}_{i}\), \(i = 1,\dots,n\) and for constants
+\(a_{i}\), \(i = 1,\dots,n\) with \(\sum_{i=1}^{n} a_{i} = 0\).}
+\begin{align*}
+\sum_{i=1}^{n}\sum_{j=1}^{n} a_{i}a_{j}\gamma(\mathbf{h}_{ij})
+&= \sum_{i=1}^{n}\sum_{j=1}^{n}a_{i}a_{j}[C(\mathbf{0})-C(\mathbf{h}_{ij})] \\
+&= C(\mathbf{0})\sum_{i=1}^{n} a_{i} \sum_{j=1}^{n} a_{j}
+- \sum_{i=1}^{n}\sum_{j=1}^{n}a_{i}a_{j}
+ Cov(Z(\mathbf{s}_{i}), Z(\mathbf{s}_{j})) \\
+&= 0 - \sum_{i=1}^{n}\sum_{j=1}^{n}a_{i}a_{j}
+\left[E(Z(\mathbf{s}_{i})Z(\mathbf{s}_{j}))
+- E(Z(\mathbf{s}_{i}))E(Z(\mathbf{s}_{j}))\right] \\
+&= -\sum_{i=1}^{n}\sum_{j=1}^{n}a_{i}a_{j}
+E(Z(\mathbf{s}_{i})Z(\mathbf{s}_{j}))
++ \sum_{i=1}^{n}\sum_{j=1}^{n}a_{i}a_{j}
+E(Z(\mathbf{s}_{i}))E(Z(\mathbf{s}_{j})) \\
+&= -E\left(\sum_{i=1}^{n}a_{i}Z(\mathbf{s}_{i})
+\sum_{j=1}^{n}a_{j}Z(\mathbf{s}_{j})\right)
++ \sum_{i=1}^{n}\sum_{j=1}^{n}a_{i}a_{j} \mu^{2} \\
+&= -E\left(\sum_{i=1}^{n}a_{i}Z(\mathbf{s}_{i})\right)^{2} + 0 \\
+&\leq 0
+\end{align*}
+
+\end{enumerate}
+
+\item%2
+{\it Matheron's semivariogram estimator is}
+\begin{equation*}
+\widehat{\gamma}(\mathbf{h}) = \frac{1}{2|N(\mathbf{h})|}
+\sum_{N(\mathbf{h})} \left\{Z(\mathbf{s}_{i}) - Z(\mathbf{s}_{j})\right\}^{2}
+\end{equation*}
+{\it where \(N(\mathbf{h}) = \{(\mathbf{s}_{i}, \mathbf{s}_{j}):
+\mathbf{h} = \mathbf{s}_{i} - \mathbf{s}_{j}\}\) and \(|N(\mathbf{h})|\) is
+the number of pairs in the set \(N(\mathbf{h})\).}
+
+\begin{enumerate}
+
+\item%a
+{\it Let \(Z(\mathbf{s}) = \mu + e(\mathbf{s})\) where \(E[e(\mathbf{s})]=0\)
+with \(\gamma_{Z}(\mathbf{h}) = \gamma_{e}(\mathbf{h})\) (adding a constant to
+the random error terms does not change the variance/covariance properties of
+the process). Show that \(\widehat{\gamma}(\mathbf{h})\) is unbiased for
+\(\gamma_{Z}(\mathbf{h})\). That is, show \(E[\widehat{\gamma}(\mathbf{h})]
+= \gamma_{Z}(\mathbf{h})\). Hint: Show that under an assumption of a constant
+mean}
+\begin{equation*}
+\gamma_{Z}(\mathbf{h})
+= \frac{1}{2}E\left[Z(\mathbf{s}_{i}) - Z(\mathbf{s}_{j})\right]^{2}
+\end{equation*}
+
+First,
+\begin{align*}
+\gamma_{Z}(\mathbf{h})
+&= \frac{1}{2} Var\left[Z(\mathbf{s}_{i}) - Z(\mathbf{s}_{j})\right] \\
+&= \frac{1}{2} \left(E\left[Z(\mathbf{s}_{i}) - Z(\mathbf{s}_{j})\right]^{2}
+- \left(E[Z(\mathbf{s}_{i}) - Z(\mathbf{s}_{j})]\right)^{2}\right) \\
+&= \frac{1}{2} \left(E\left[Z(\mathbf{s}_{i}) - Z(\mathbf{s}_{j})\right]^{2}
+- \left(E[Z(\mathbf{s}_{i})] - E[Z(\mathbf{s}_{j})]\right)^{2}\right) \\
+&= \frac{1}{2} \left(E\left[Z(\mathbf{s}_{i}) - Z(\mathbf{s}_{j})\right]^{2}
+- \left(\mu - \mu\right)^{2}\right) \\
+&= \frac{1}{2} E\left[Z(\mathbf{s}_{i}) - Z(\mathbf{s}_{j})\right]^{2}.
+\end{align*}
+Then,
+\begin{align*}
+E\left[\widehat{\gamma}(\mathbf{h})\right]
+&= E\left[\frac{1}{2|N(\mathbf{h})|} \sum_{N(\mathbf{h})}
+\left\{Z(\mathbf{s}_{i}) - Z(\mathbf{s}_{j})\right\}^{2}\right] \\
+&= \frac{1}{|N(\mathbf{h})|} \sum_{N(\mathbf{h})}\frac{1}{2}E\left[
+Z(\mathbf{s}_{i}) - Z(\mathbf{s}_{j})\right]^{2} \\
+&= \frac{1}{|N(\mathbf{h})|} \sum_{N(\mathbf{h})}\gamma_{Z}(\mathbf{h}_{ij}) \\
+&= \frac{1}{|N(\mathbf{h})|} |N(\mathbf{h})|\gamma_{Z}(\mathbf{h}) \\
+&= \gamma_{Z}(\mathbf{h})
+\end{align*}
+so \(\widehat{\gamma}(\mathbf{h})\) is unbiased for \(\gamma_{Z}(\mathbf{h})\).
+
+\pagebreak
+\item%b
+{\it We pointed out in class that Matheron's Estimator is biased in the
+presence of trend. Let \(Z(\mathbf{s}) = \mu(\mathbf{s}) + e(\mathbf{s})\)
+with \(E[e(\mathbf{s})] = 0\) and \(\gamma_{Z}(\mathbf{h})
+= \gamma_{e}(\mathbf{h})\). Show}
+\begin{equation*}
+E\left[\widehat{\gamma}(\mathbf{h})\right]
+= \gamma_{e}(\mathbf{h}) + \frac{1}{2|N(\mathbf{h})|}
+\sum_{N(\mathbf{h})}\left[\mu(\mathbf{s}_{i})-\mu(\mathbf{s}_{j})\right]^{2}.
+\end{equation*}
+
+First note that
+\begin{equation*}
+\gamma_{e}(\mathbf{h})
+= \frac{1}{2}E\left[e(\mathbf{s}_{i})-e(\mathbf{s}_{j})\right]^{2}
+\end{equation*}
+because the mean of \(e(\mathbf{s})\) is constant. Now,
+\begin{align*}
+E\left[\widehat{\gamma}(\mathbf{h})\right]
+&= E\left[\frac{1}{2|N(\mathbf{h})|} \sum_{N(\mathbf{h})}
+\left\{Z(\mathbf{s}_{i}) - Z(\mathbf{s}_{j})\right\}^{2}\right] \\
+&= E\left[\frac{1}{2|N(\mathbf{h})|} \sum_{N(\mathbf{h})}
+\left\{\mu(\mathbf{s}_{i})+e(\mathbf{s}_{i})
+- \mu(\mathbf{s}_{j})-e(\mathbf{s}_{j})\right\}^{2}\right] \\
+&= E\left[\frac{1}{2|N(\mathbf{h})|} \sum_{N(\mathbf{h})}
+\left\{[e(\mathbf{s}_{i}) - e(\mathbf{s}_{j})]^{2}
++ [\mu(\mathbf{s}_{i}) - \mu(\mathbf{s}_{j})]^{2}
+- [\mu(\mathbf{s}_{i}) - \mu(\mathbf{s}_{j}))
+(e(\mathbf{s}_{i}) - e(\mathbf{s}_{j})]\right\}\right] \\
+&= \frac{1}{2|N(\mathbf{h})|} \sum_{N(\mathbf{h})}\left\{
+E[e(\mathbf{s}_{i}) - e(\mathbf{s}_{j})]^{2}
++ E[\mu(\mathbf{s}_{i}) - \mu(\mathbf{s}_{j})]^{2}
+- E[\mu(\mathbf{s}_{i}) - \mu(\mathbf{s}_{j}))
+(e(\mathbf{s}_{i}) - e(\mathbf{s}_{j})]\right\} \\
+&= \frac{1}{2|N(\mathbf{h})|} \sum_{N(\mathbf{h})}\left\{
+E[e(\mathbf{s}_{i}) - e(\mathbf{s}_{j})]^{2}
++ [\mu(\mathbf{s}_{i}) - \mu(\mathbf{s}_{j})]^{2}
+- [\mu(\mathbf{s}_{i}) - \mu(\mathbf{s}_{j})]
+E[e(\mathbf{s}_{i}) - e(\mathbf{s}_{j})]\right\} \\
+&= \frac{1}{2|N(\mathbf{h})|} \sum_{N(\mathbf{h})}\left\{
+E[e(\mathbf{s}_{i}) - e(\mathbf{s}_{j})]^{2}
++ [\mu(\mathbf{s}_{i}) - \mu(\mathbf{s}_{j})]^{2}
+- [\mu(\mathbf{s}_{i}) - \mu(\mathbf{s}_{j})]
+(0)\right\} \\
+&= \frac{1}{2|N(\mathbf{h})|} \sum_{N(\mathbf{h})}
+E[e(\mathbf{s}_{i}) - e(\mathbf{s}_{j})]^{2}
++ \frac{1}{2|N(\mathbf{h})|} \sum_{N(\mathbf{h})}
+[\mu(\mathbf{s}_{i}) - \mu(\mathbf{s}_{j})]^{2} \\
+&= \gamma_{e}(\mathbf{h})
++ \frac{1}{2|N(\mathbf{h})|} \sum_{N(\mathbf{h})}
+[\mu(\mathbf{s}_{i}) - \mu(\mathbf{s}_{j})]^{2}
+\end{align*}
+
+\pagebreak
+\item%c
+{\it Consider the (very) simple model \(Z_{i} = 10 + e_{i}\) where the
+\(e_{i}\) are independent normally distributed error terms with variance
+\(\sigma^{2} = 81\). We have a pure nugget effect model
+\(\gamma_{Z}(\mathbf{h}) = \gamma_{e}(\mathbf{h}) = 81\). Simulate 100
+observations of \(Z_{i}\) and calculate the empirical semivariogram assuming
+the observations are on a one-dimensional transect.}
+<<prob2c>>=
+library(geoR)
+set.seed(25277)
+Zdat <- 10 + rnorm(100, 0, 9)
+i <- 1:100
+xycoord <- cbind(rep(1, 100), i)
+Zvgram <- variog(coords = xycoord, data = Zdat)
+par(mar = c(4, 4, 1, 1))
+plot(Zvgram)
+abline(h = 81)
+@
+{\it Compare what you see in the plot to the true \(\gamma_{Z}(\mathbf{h})\).
+Is the result consistent with part (a) above? Why or why not?}
+
+The empirical semivariogram is nearly horizontal and generally stays near the
+true value of \(\gamma(\mathbf{h}) = 81\), which is consistent with the
+theoretical unbiasedness shown in part (a). The estimates at different lags
+tend to be higher than the true semivariogram, but that is not surprising
+because they use the same observed values and are correlated. This is only
+one observation of a spatial process; Matheron's estimator is unbiased over
+all realizations of the process.
+
+\pagebreak
+\item%d
+{\it Redo the above calculations based on the (still) simple model
+\(Z_{i} = 10 + 10i + e_{i}\), i.e. there is now a linear trend and the process
+is no longer stationary.}
+<<prob2d>>=
+Zdat2 <- 10 + 10 * i + rnorm(100, 0, 9)
+Zvgram2 <- variog(coords = xycoord, data = Zdat2)
+par(mar = c(4, 4, 1, 1))
+plot(Zvgram2)
+@
+{\it Compare the empirical semivariogram \texttt{Zvgram2} to \text{Zvgram}.
+Are the results consistent with part (b) above? Justify your answer.}
+
+The data in (c) came from a stationary process so that semivariogram is roughly
+constant. but this empirical semivariogram has a parabolic shape because of
+son-stationarity. In this situation, the trend in the mean is linear, with
+\(\mu(s_{i})-\mu(s_{j}) = 10(s_{i}-s_{j})\), so the parabolic pattern is
+consistent with part (b) which shows that the bias in Matheron's estimator is
+quadratic in the difference in means.
+
+\pagebreak
+\item%e
+{\it Fit a linear model to the data in (d), extract the residuals, and compute
+the empirical semivariogram for the residuals. Note that what you are doing is
+removing the trend.}
+<<prob2e>>=
+e.resid <- residuals(lm(Zdat2 ~ i))
+evgram <- variog(coords = xycoord, data = e.resid)
+par(mar = c(4, 4, 1, 1))
+plot(evgram)
+abline(h = 81)
+@
+{\it Compare the 3 empirical semivariograms.}
+
+The residuals have a constant mean of zero, so the empirical semivariogram of
+the residuals does not have a pattern of increasing bias like the one seen in
+part (d). Like in part (c), the empirical semivariogram is an overestimate but
+that is probably because of sampling variability (this is another sample of
+size one, after all).
+
+\end{enumerate}
+
+\pagebreak
+\item%3
+{\it Attached is a data set containing the carbon nitrogen values used in the
+carbon/nitrogen data set. The first 2 columns contain the coordinates, total
+nitrogen is in the third column, total carbon is in the 4th column and the
+ratio is in the last column. We will work with the total carbon data. Use
+\texttt{geoR} for the analysis. It will be easiest if you convert the data
+into a \texttt{geodata} object as follows.}
+<<prob3>>=
+CN.dat <- read.table('CN.dat', header = TRUE)
+TC.geodata <- as.geodata(CN.dat, coords.col = 1:2, data.col = 4)
+@
+
+\begin{enumerate}
+
+\item%a
+{\it Calculate the empirical semivariogram. Give initial eyeball estimates of
+the nugget effect, sill, and (effective) range.}
+
+<<prob3a>>=
+TC.vgram <- variog(TC.geodata)
+par(mar = c(4, 4, 1, 1))
+plot(TC.vgram)
+@
+
+The sill is around 0.015, the effective range looks to be about 150, and the
+nugget is probably somewhere near 0.005.
+
+\pagebreak
+\item%b
+{\it Fit an exponential semivariogram to the carbon data using \(OLS\),
+\(WLS\), \(MLE\), and \(REML\) methods. Specify a nugget effect in each case,
+i.e. you do not need to consider models without a nugget. Plot the fitted
+functions and comment on which one you like best.}
+
+<<prob3b, cache = TRUE, results = 'hide'>>=
+tc.e.ols <- variofit(TC.vgram, ini.cov.pars = c(0.015, 150/3), nugget = 0.005,
+                     fix.nugget = FALSE, cov.model = 'exponential',
+                     weights = 'equal')
+tc.e.wls <- variofit(TC.vgram, ini.cov.pars = c(0.015, 150/3), nugget = 0.005,
+                     fix.nugget = FALSE, cov.model = 'exponential',
+                     weights = 'cressie')
+tc.e.ml <- likfit(TC.geodata, ini.cov.pars = c(0.015, 150/3), nugget = 0.005,
+                  fix.nugget = FALSE, cov.model = 'exponential',
+                  lik.method = 'ML')
+tc.e.reml <- likfit(TC.geodata, ini.cov.pars = c(0.015, 150/3), nugget = 0.005,
+                    fix.nugget = FALSE, cov.model = 'exponential',
+                    lik.method = 'RML')
+
+par(mar = c(4, 4, 1, 1))
+plot(TC.vgram)
+lines(tc.e.ols, lty = 1)
+lines(tc.e.wls, lty = 2)
+lines(tc.e.ml, lty = 3)
+lines(tc.e.reml, lty = 4)
+legend('bottomright', lty = 1:4, legend = c('OLS', 'WLS', 'ML', 'REML'))
+@
+
+All of the estimates are similar, but the OLS and WLS estimates look best
+because they come closest to \(\widehat{\gamma}\) at the smallest lags. I
+would use WLS just because I like the theoretical idea of downweighting the
+large lags even though the result is barely distinguishable from the OLS
+result here.
+
+\item%c
+{\it Redo part (b) by fitting a spherical model.}
+
+<<prob3c, cache = TRUE, results = 'hide'>>=
+tc.s.ols <- variofit(TC.vgram, ini.cov.pars = c(0.015, 150), nugget = 0.005,
+                     fix.nugget = FALSE, cov.model = 'spherical',
+                     weights = 'equal')
+tc.s.wls <- variofit(TC.vgram, ini.cov.pars = c(0.015, 150), nugget = 0.005,
+                     fix.nugget = FALSE, cov.model = 'spherical',
+                     weights = 'cressie')
+tc.s.ml <- likfit(TC.geodata, ini.cov.pars = c(0.015, 150), nugget = 0.005,
+                  fix.nugget = FALSE, cov.model = 'spherical',
+                  lik.method = 'ML')
+tc.s.reml <- likfit(TC.geodata, ini.cov.pars = c(0.015, 150), nugget = 0.005,
+                    fix.nugget = FALSE, cov.model = 'spherical',
+                    lik.method = 'RML')
+
+par(mar = c(4, 4, 1, 1))
+plot(TC.vgram, ylim = c(0, 0.022))
+lines(tc.s.ols, lty = 1)
+lines(tc.s.wls, lty = 2)
+lines(tc.s.ml, lty = 3)
+lines(tc.s.reml, lty = 4)
+legend('bottomright', lty = 1:4, legend = c('OLS', 'WLS', 'ML', 'REML'))
+@
+
+Again, I would choose WLS. This time, ML and REML both overestimate the sill,
+but WLS and OLS match \(\widehat{\gamma}\) pretty well.
+
+\pagebreak
+\item%d
+{\it Summarize your results in table format. Compare the results and discuss.}
+
+<<prob3d, eval = FALSE>>=
+compare <- do.call(rbind,
+                   lapply(list(tc.e.ols, tc.e.wls, tc.e.ml, tc.e.reml,
+                               tc.s.ols, tc.s.wls, tc.s.ml, tc.s.reml),
+                          function(x){
+                            return(data.frame(
+                                     Model = x$cov.model,
+                                     Method = x$method,
+                                     Nugget = x$nugget,
+                                     Sill = x$cov.pars[1],
+                                     Range = x$cov.pars[2] *
+                                       ifelse(x$cov.model == 'exponential', 3, 1)))
+                          }))
+xtable(compare, digits = 5)
+@
+\begin{center}
+<<prob3d, echo = FALSE, results = 'asis'>>=
+@
+\end{center}
+I multiplied the exponential range parameter by three so that the table
+actually shows the effective range. I tried a few different initial range
+values, and as long as the initial range was somewhere in the flat section of
+the semivariogram, the OLS and WLS range estimate was close to the initial
+value (for both models). For a given model, all four estimation methods gave
+about the same nugget estimate, though the nugget estimates for the spherical
+model were almost 2.5 times as big as the nugget estimates for the exponential
+model. OLS and WLS gave similar sill values, and ML and REML also found
+similar sill estimates; for the exponential model all four methods found
+pretty similar sills, but for the spherical model OLS/WLS and ML/REML yielded
+noticeably different sill values. The conclusion I can make from all this is
+that fitting a semivariogram model involves many choices that affect the end
+result, so you need to check the fitted model against the empirical
+semivariogram to see if it looks reasonable. For this dataset, I would use the
+exponential model fit by WLS.
+
+\end{enumerate}
+
+\end{enumerate}
+
+\end{document}
+
