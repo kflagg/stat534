@@ -1,0 +1,255 @@
+\documentclass[11pt]{article}
+\usepackage{fullpage,graphicx,float,amsmath,enumitem,fancyhdr}
+
+\setlist{parsep=5.5pt}
+\setlength{\parindent}{0pt}
+
+\newcommand\assignment{Stat 534 Homework 6}
+\newcommand\myname{Kenny Flagg}
+\newcommand\duedate{February 24, 2017}
+
+\pagestyle{fancy}
+\lhead{\assignment}
+\chead{\duedate}
+\rhead{\myname}
+\setlength{\headheight}{18pt}
+\setlength{\headsep}{2pt}
+
+\title{\assignment}
+\author{\myname}
+\date{\duedate}
+
+\begin{document}
+\maketitle
+
+<<setup, echo = FALSE, message = FALSE, cache = FALSE>>=
+library(knitr)
+library(extrafont)
+opts_chunk$set(echo = TRUE, comment = NA, message = FALSE,
+               show.signif.stars = FALSE,
+               fig.align = 'center', fig.width = 6.5, fig.height = 4,
+               fig.pos = 'H', size = 'footnotesize', dev = 'pdf',
+               dev.args = list(family = 'CM Roman', pointsize = 11))
+knit_theme$set('print')
+
+library(geoR)
+library(xtable)
+options(xtable.floating = FALSE,
+        xtable.sanitize.rownames.function = function(x) x,
+        xtable.sanitize.colnames.function = function(x) x,
+        xtable.include.rownames = FALSE,
+        width = 80, scipen = 2, show.signif.stars = FALSE)
+
+set.seed(789623)
+@
+
+\begin{enumerate}
+
+\item%1
+{\it Refer to the 7 point ordinary kriging example we discussed in class.
+Repeat the example with the following changes. We move point
+\(\mathbf{s}_{3}\) to (22, 22) and point \(\mathbf{s}_{5}\) to (15, 20).
+Compare and contrast the results to the example being sure to address the
+following. You need to be careful with the nugget effect and range parameters.}
+
+{\it Recall that Model D is a pure nugget effect model. You do not need the
+above function to fit that one. A table showing predictions, kriging
+variances, and weights will help.}
+
+<<prob1_1, fig.width = 3.5>>=
+prob1 <- data.frame(x = c(  5, 20, 22,  8, 15, 35, 38),
+                    y = c( 20,  2, 22, 39, 20, 20, 10),
+                    z = c(100, 70, 60, 90, 50, 80, 40))
+plot(y ~ x, data = prob1, pch = as.character(1:7),
+     main = expression('Locations with Relocated '*bold(s)[3]*' and '*bold(s)[5]))
+points(20, 20, pch = 19)
+@
+
+<<prob1_2, eval = FALSE>>=
+# Eighth row/column are for s_0.
+dists <- as.matrix(dist(rbind(prob1[,1:2], c(20, 20))))
+
+# A function to automate all this.
+prob1_function <- function(model, eff_range, sill, nugget){
+  if(model == 'exponential')
+    eff_range <- eff_range / 3 # Adjust exponential range by 3.
+  else if(model == 'gaussian')
+    eff_range <- eff_range / sqrt(3) # Adjust gaussian range by sqrt(3).
+  if(model == 'nugget')
+    Sigma <- diag(rep(nugget, 8))
+  else
+    Sigma <- cov.spatial(dists, cov.model = model,
+                         cov.pars = c(sill - nugget, eff_range)) +
+             diag(rep(nugget, 8))
+  sig <- Sigma[8, 1:7]
+  SigmaStar <- Sigma
+  SigmaStar[8, 1:7] <- 1
+  SigmaStar[1:7, 8] <- 1
+  SigmaStar[8, 8] <- 0
+  sigStar <- c(sig, 1)
+  lambdaStar <- solve(SigmaStar) %*% sigStar
+  p_ok <- t(lambdaStar[-8]) %*% prob1$z
+  if(model == 'nugget')
+    sig2_ok <- nugget - t(lambdaStar) %*% sigStar
+  else
+    sig2_ok <- sill - t(lambdaStar) %*% sigStar
+  return(c(p_ok, sig2_ok, lambdaStar[-8]))
+}
+
+prob1_table <- cbind(data.frame(Model = c(LETTERS[1:6], 'Distance')),
+                     as.data.frame(rbind(
+                       prob1_function('exponential', 20, 10, 0),
+                       prob1_function('exponential', 10, 10, 0),
+                       prob1_function('exponential', 20, 10, 5),
+                       prob1_function('nugget', 0, 0, 10),
+                       prob1_function('exponential', 20, 20, 0),
+                       prob1_function('gaussian', 20, 10, 0),
+                       c(NA, NA, dists[8, 1:7])
+                     )))
+colnames(prob1_table)[-1] <- c('\\(p_{ok}\\)', '\\(\\sigma^{2}_{ok}\\)',
+                                paste0('\\(\\lambda_{', 1:7, '}\\)'))
+print(xtable(prob1_table, align = 'ccrrrrrrrrr'), hline.after = c(0, 6))
+@
+<<prob1_2, echo = FALSE, results = 'asis'>>=
+@
+
+\begin{enumerate}
+
+\item%a
+{\it Do the same conclusions regarding the effects of the sill, range, and
+nugget effect still hold?}
+
+Yes, the sill still just rescales the variance, and decreasing the range or
+increasing the nugget still reduces the variability of the weights.
+
+It's interesting that the weights for \(\mathbf{s}_{3}\) and
+\(\mathbf{s}_{5}\) are closer to the weights of the other points in Model B
+(effective range of 10) than they are in Model A (effective range of 20). The
+range doesn't act like a magic threshold that separates highly correlated
+points from points with low correlation; it simply adjusts how quickly the
+correlation decays over distance. Even though \(\mathbf{s}_{3}\) and
+\(\mathbf{s}_{5}\) are the closest points to \(\mathbf{s}_{0}\), under Model B
+they are still less correlated with \(\mathbf{s}_{0}\) than they are under
+Model A, so under Model B they get weights that are closer to the weights of
+the farthest points.
+
+\item%b
+{\it Which points are screening?}
+
+\(\mathbf{s}_{1}\) is screened by \(\mathbf{s}_{5}\) and \(\mathbf{s}_{6}\)
+is screened by \(\mathbf{s}_{3}\). The screening is apparent from the table
+because, for most models, \(\lambda_{1}\) and \(\lambda_{6}\) are smaller than
+\(\lambda_{2}\) even though \(\mathbf{s}_{2}\) is a farther from
+\(\mathbf{s}_{0}\). It is especially obvious for the gaussian model (F) where
+\(\lambda_{1}\) and \(\lambda_{6}\) are negative.
+
+\item%c
+{\it What happens to the kriging variance?}
+
+For all of the models except the pure nugget model, the kriging variance is
+lower. This makes sense because moving some correlated observations closer to
+the location of the prediction provides more information about
+\(Z(\mathbf{s}_{0})\) and should reduce the amount of uncertainty in the
+prediction.
+
+\item%d
+{\it In which models does the predicted value change and in which does it stay
+the same?}
+
+The predicted value stays the same for the pure nugget model, and it changes
+for all the other models. For the models with spatial dependence, the
+predicted value is pulled towards the values \(Z(\mathbf{s}_{3}) = 60\)
+and \(Z(\mathbf{s}_{5}) = 50\) because those nearby points have the largest
+weights.
+
+\end{enumerate}
+
+\pagebreak
+\item%2
+{\it We are going to use ordinary kriging to predict values of total carbon
+over a grid. You should still have the carbon/nitrogen data set from the last
+homework but let me know if you need to have it emailed to you. Choose your
+grid to be the same as in the CN ratio example I worked in class. Set up R
+code is below.}
+<<prob2>>=
+CN.dat <- read.table('../hw05/CN.dat', header = TRUE)
+pred.grid <- expand.grid(seq(-50, 550, l = 100), seq(-15, 330, l = 100))
+TC.geodat <- as.geodata(CN.dat, coords.col = 1:2, data.col = 4)
+@
+{\it We will work with total carbon (column labeled TC in the data set) in
+this problem. You can use either the \texttt{ksline} or \texttt{krige.conv}
+functions. Be a bit patient; it should take only a minute
+or so. Don’t worry about anisotropy.}
+
+\begin{enumerate}
+
+\item%a
+{\it Plot the data using}
+<<prob2a, fig.height = 5>>=
+plot(TC.geodat, breaks = 20)
+@
+{\it Do you see any evidence of trend? Outliers? Other potential anomalies?}
+
+There appears to be a slight trend of decreasing total carbon to the north.
+There is a possible low outlier in the northwest corner, and a possible high
+outlier near \((200, 150)\), but neither of these look very extreme in the
+histogram.
+
+\pagebreak
+\item%b
+{\it Predict using global ordinary kriging. You estimated a semivariogram for
+these data on the last homework and you can use those results. Prepare contour
+plots of the predictions and kriging standard errors.}
+
+On the previous assignment, I selected an exponential model (estimated by
+Cressie's WLS method) with a nugget of 0.00241, partial sill of 0.01418, and
+effective range of 154.62223.
+
+<<prob2b, fig.height = 6, fig.width = 4, results = 'hide', cache = TRUE>>=
+control <- krige.control(cov.model = 'exponential',
+                         cov.pars = c(0.01418, 154.62223/3),
+                         nugget = 0.00241)
+TC_pred <- krige.conv(TC.geodat, locations = pred.grid, krige = control)
+par(mfrow = c(2, 1), mar = c(4, 4, 2, 1))
+contour(TC_pred, main = 'Kriging Predictions')
+contour(TC_pred, val = sqrt(TC_pred$krige.var), main = 'Kriging Standard Errors')
+@
+
+\item%c
+{\it Evaluate the predictions using cross validation (CV2). You can use the R
+code I provided in class notes.}
+
+<<prob2c1, results = 'hide', cache = TRUE>>=
+CV2_term <- function(i, geodata = TC.geodat, ...){
+  pred <- krige.conv(coords = geodata$coords[-i,],
+                     data = geodata$data[-i],
+                     locations = rbind(geodata$coords[i,]), ...)
+  return((geodata$data[i] - pred$predict) / sqrt(pred$krige.var))
+}
+CV2 <- sqrt(mean(sapply(seq_along(TC.geodat$data), CV2_term, krige = control)^2))
+@
+<<prob2c2>>=
+CV2
+@
+
+\item%d
+{\it Briefly discuss your results.}
+
+The plots of the observed values in part (a) shows a random-looking arrangement
+of colors and shapes, indicating that some large total carbon values occur
+small values, but some banding is visible, suggesting that there is a trend.
+Unsurprisingly, the kriging prediction surface is noisy because of the
+variation between nearby measurements. The predictions tend to be higher in
+the southern half of the site than in the northern half, so the carbon values
+may be non-stationary and it would be worthwhile to fit a linear trend model.
+However, the \(CV_{2}\) value is close to 1, meaning that the model accurately
+predicts the observed values when one at a time is omitted. The standard error
+surface shows small dips at the observed locations and larger standard errors
+in the vertical gaps where no measurements were recorded.
+
+\end{enumerate}
+
+\end{enumerate}
+
+\end{document}
+

@@ -1,0 +1,272 @@
+\documentclass[11pt]{article}
+\usepackage{fullpage,graphicx,float,amsmath,enumitem,fancyhdr}
+
+\setlist{parsep=5.5pt}
+\setlength{\parindent}{0pt}
+
+\newcommand\assignment{Stat 534 Homework 7}
+\newcommand\myname{Kenny Flagg}
+\newcommand\duedate{March 6, 2017}
+
+\pagestyle{fancy}
+\lhead{\assignment}
+\chead{\duedate}
+\rhead{\myname}
+\setlength{\headheight}{18pt}
+\setlength{\headsep}{2pt}
+
+\title{\assignment}
+\author{\myname}
+\date{\duedate}
+
+\begin{document}
+\maketitle
+
+<<setup, echo = FALSE, message = FALSE, cache = FALSE>>=
+library(knitr)
+library(extrafont)
+opts_chunk$set(echo = TRUE, comment = NA, message = FALSE,
+               show.signif.stars = FALSE,
+               fig.align = 'center', fig.width = 6.5, fig.height = 4,
+               fig.pos = 'H', size = 'footnotesize', dev = 'pdf',
+               dev.args = list(family = 'CM Roman', pointsize = 11))
+knit_theme$set('print')
+
+library(geoR)
+library(xtable)
+options(xtable.floating = FALSE,
+        xtable.sanitize.rownames.function = function(x) x,
+        xtable.sanitize.colnames.function = function(x) x,
+        width = 80, scipen = 2, show.signif.stars = FALSE)
+
+set.seed(218923)
+@
+
+\begin{enumerate}
+
+\item%1
+{\it A data set (\texttt{wheat.txt}) has been sent to you. The data set
+contains yields of wheat recorded at spatial coordinates. Note that the header
+is x, y, and z with z being the yields. We will need a couple of different data
+object types. Pay attention to the R code below. Do not worry about
+anisotropy.}
+
+<<prob1_1>>=
+wheat.dat <- read.table('wheat.txt', header = TRUE)
+wheat.geodat <- as.geodata(wheat.dat, coords.col = 1:2, data.col = 3)
+wheat.grid <- expand.grid(seq(0, 50, l = 25), seq(0, 30, l = 25))
+@
+
+\begin{enumerate}
+
+\item%a
+{\it Plot the data and comment on the results.}
+
+<<prob1a1>>=
+plot(wheat.geodat, breaks = 30)
+@
+
+There is a trend in wheat yield, with the lowest yields occuring in the bottom
+left of the region and the highest yields in the top right.
+
+\item%b
+{\it Produce a plot of the empirical semivariogram of the wheat yields. Can
+this plot be trusted for estimation of semivariogram parameters to be used in
+kriging. Why or why not?}
+
+<<prob1b1, results = 'hide', fig.height = 5>>=
+yield.semivar <- variog(wheat.geodat)
+plot(yield.semivar, main = 'Empirical Semivariogram of Yield')
+@
+
+No, this plot cannot be trusted because the process is non-stationary so the
+empirical semivariogram is biased.
+
+\item%c
+{\it We will use the \texttt{surf.ls} function in the spatial library to fit a
+quadratic trend model to the yields by ordinary least squares and plot the
+empirical semivariogram of the residuals.}
+<<prob1c1>>=
+library(spatial, quietly = TRUE)
+wheat.ls <- surf.ls(2, wheat.dat) # fits a second order polynomial trend surface
+resid.dat <- cbind(wheat.dat$x, wheat.dat$y, residuals(wheat.ls))
+resid.geodat <- as.geodata(resid.dat, coords.col = 1:2, data.col = 3)
+@
+{\it Fit an appropriate semivariogram model to the semivariogram using your
+method of choice. Justify your final selection.}
+
+Based on the empirical semivariogram (plot on next page) I chose initial
+values of 17 for the nugget, 10 for the (effective) range, and 25 for the
+total sill (implying a partial sill of 8). I fit exponential and spherical
+models by Cressie's WLS and by REML.
+
+<<prob1c2, cache = TRUE, results = 'hide', fig.height = 5>>=
+resid.semivar <- variog(resid.geodat)
+exp.wls <- variofit(resid.semivar, ini.cov.pars = c(8, 10/3), nugget = 17,
+                    fix.nugget = FALSE, cov.model = 'exponential', weights = 'cressie')
+exp.reml <- likfit(resid.geodat, ini.cov.pars = c(8, 10/3), nugget = 17,
+                   fix.nugget = FALSE, cov.model = 'exponential', lik.method = 'rml')
+sph.wls <- variofit(resid.semivar, ini.cov.pars = c(8, 10), nugget = 17,
+                    fix.nugget = FALSE, cov.model = 'spherical', weights = 'cressie')
+sph.reml <- likfit(resid.geodat, ini.cov.pars = c(8, 10), nugget = 17,
+                   fix.nugget = FALSE, cov.model = 'spherical', lik.method = 'rml')
+plot(resid.semivar, main = 'Semivariogram of Residuals')
+lines(exp.wls, lty = 1)
+lines(exp.reml, lty = 2)
+lines(sph.wls, lty = 3)
+lines(sph.reml, lty = 4)
+legend('bottomright', lty = 1:4,
+       legend = c('Exponential, WLS', 'Exponential, REML', 'Spherical, WLS', 'Spherical, REML'))
+@
+<<prob1c3, eval = FALSE>>=
+estimates <- rbind(
+  `Exponential, WLS` = c(exp.wls$nugget, exp.wls$cov.pars * c(1, 3)),
+  `Exponential, REML` = c(exp.reml$nugget, exp.reml$cov.pars * c(1, 3)),
+  `Spherical, WLS` = c(sph.wls$nugget, sph.wls$cov.pars),
+  `Spherical, REML` = c(sph.reml$nugget, sph.reml$cov.pars)
+)
+colnames(estimates) <- c('Nugget', 'Partial Sill', 'Range')
+xtable(estimates)
+@
+\begin{center}
+<<prob1c3, echo = FALSE, results = 'asis'>>=
+@
+\end{center}
+
+On the plot, all four estimated models look very similar but the table above
+shows some disagreement about the parameters. (Note that I multiplied the
+exponential range parameter by 3 so the table shows the effective range for
+the exponential models and the range for the spherical models.)
+
+I ultimately chose the spherical model estimated by WLS because WLS does not
+depend on normality and the spherical models fit the points at the lower lags
+a bit better than the exponential models do.
+
+\item%d
+{\it Predict yields using universal kriging and ordinary kriging. Use the
+parameter estimates from the residual semivariogram when you do ordinary
+kriging. Plot the results along with a plot of the kriging standard errors.
+Remember to be careful of that range parameter -- what you enter depends on
+which semivariogram model you used.}
+<<prob1d, cache = TRUE, dependson = 'prob1c2', results = 'hide', fig.height = 5>>=
+# I'll just get the parameters straight out of the semivariogram model object.
+wheat.uk <- ksline(wheat.geodat, locations = wheat.grid, cov.model = 'spherical',
+                   cov.pars = sph.wls$cov.pars, nugget = sph.wls$nugget,
+                   trend = 2, m0 = 'kt')
+wheat.ok <- ksline(wheat.geodat, locations = wheat.grid, cov.model = 'spherical',
+                   cov.pars = sph.wls$cov.pars, nugget = sph.wls$nugget)
+
+par(mfrow = c(2, 2), mar = c(4, 3, 2, 1))
+contour(wheat.uk, main = 'Universal Kriging Predicitons')
+contour(wheat.uk, val = sqrt(wheat.uk$krige.var), main = 'Universal Kriging SEs')
+contour(wheat.ok, main = 'Ordinary Kriging Predicitons')
+contour(wheat.ok, val = sqrt(wheat.ok$krige.var), main = 'Ordinary Kriging SEs')
+@
+{\it Compare the results and comment.}
+
+The predicted values from both methods are pretty similar, but the prediction
+surface from universal kriging smoother than the prediction surface from the
+ordinary kriging. The standard errors from universal kriging are larger
+because they incorporate uncertainty from estimating the mean surface.
+
+\end{enumerate}
+
+\pagebreak
+\item%2
+{\it We looked at this example in class. We have a one-dimensional process with
+point to point covariance function}
+\begin{equation*}
+C(s_{i}, s_{j}) = \exp\left(-\frac{3\left|s_{i}-s_{j}\right|}{5}\right).
+\end{equation*}
+{\it The nugget effect is 0, the sill is 1 and the practical range is 5. The
+region \(B\) is defined to be the interval \(B = (2, 4)\) with \(|B| = 2\). The
+point to block covariance function is}
+\begin{equation*}
+\sigma(B, s) = Cov(Z(B), Z(s)) = \frac{1}{2}\int_{2}^{4}
+\exp\left(-\frac{3\left|u-s\right|}{5}\right)du.
+\end{equation*}
+
+\begin{enumerate}
+
+\item%a
+{\it Find the covariance function.}
+
+There are three cases to consider: \(s<2\), \(s>4\), and \(s \in B\).
+
+If \(s<2\) then \(u-s>0\) \(\forall u \in B\), so
+\begin{align*}
+\frac{1}{2}\int_{2}^{4}\exp\left(-\frac{3|u-s|}{5}\right)du
+&= \frac{1}{2}\int_{2}^{4}\exp\left(-\frac{3(u-s)}{5}\right)du \\
+&= \frac{1}{2}\left[-\frac{5}{3}\exp\left(-\frac{3(u-s)}
+{5}\right)\right]_{u=2}^{4} \\
+&= \frac{5}{6} \left[\exp\left(\frac{3}{5}(s-2)\right)
+- \exp\left(\frac{3}{5}(s-4)\right)\right].
+\end{align*}
+If \(s>4\) then \(u-s<0\) \(\forall u \in B\), so
+\begin{align*}
+\frac{1}{2}\int_{2}^{4}\exp\left(-\frac{3|u-s|}{5}\right)du
+&= \frac{1}{2}\int_{2}^{4}\exp\left(\frac{3(u-s)}{5}\right)du \\
+&= \frac{1}{2}\left[\frac{5}{3}\exp\left(\frac{3(u-s)}
+{5}\right)\right]_{u=2}^{4} \\
+&= \frac{5}{6} \left[\exp\left(\frac{3}{5}(4-s)\right)
+- \exp\left(\frac{3}{5}(2-s)\right)\right].
+\end{align*}
+Finally, if \(s \in B\) then
+\begin{align*}
+\frac{1}{2}\int_{2}^{4}\exp\left(-\frac{3|u-s|}{5}\right)du
+&= \frac{1}{2}\int_{2}^{s}\exp\left(-\frac{3|u-s|}{5}\right)du
++ \frac{1}{2}\int_{s}^{4}\exp\left(-\frac{3|u-s|}{5}\right)du \\
+&= \frac{1}{2}\int_{2}^{s}\exp\left(\frac{3(u-s)}{5}\right)du
++ \frac{1}{2}\int_{s}^{4}\exp\left(-\frac{3(u-s)}{5}\right)du \\
+&= \frac{1}{2}\left[\frac{5}{3}\exp\left(\frac{3(u-s)}
+{5}\right)\right]_{u=2}^{s}
++ \frac{1}{2}\left[-\frac{5}{3}\exp\left(-\frac{3(u-s)}
+{5}\right)\right]_{u=s}^{4} \\
+&= \frac{5}{6} \left[\exp(0) - \exp\left(\frac{3}{5}(2-s)\right)
+- \exp\left(\frac{3}{5}(s-4)\right) + \exp(0)\right] \\
+&= \frac{5}{6} \left[2 - \exp\left(\frac{3}{5}(2-s)\right)
+- \exp\left(\frac{3}{5}(s-4)\right)\right].
+\end{align*}
+So the point-to-block covariance function is
+\begin{equation*}
+\sigma(B,s) = \frac{5}{6}\begin{cases}
+\exp\left(\frac{3}{5}(s-2)\right) - \exp\left(\frac{3}{5}(s-4)\right) &
+s<2 \\
+2 - \exp\left(\frac{3}{5}(2-s)\right) - \exp\left(\frac{3}{5}(s-4)\right) &
+2 \leq s \leq 4 \\
+\exp\left(\frac{3}{5}(4-s)\right) - \exp\left(\frac{3}{5}(2-s)\right) &
+s>4
+\end{cases}.
+\end{equation*}
+% \(\sigma(B,3)=0.7519806\) here.
+% Numerical integration is the notes got 0.7519603.
+
+\item%b
+{\it Find \(\sigma(B, B)\).}
+
+The block-to-block covariance is %variance of the block mean?
+\begin{align*}
+\sigma(B, B) &= \frac{1}{4}\int_{2}^{4}\int_{2}^{4}\sigma(u,s)duds \\
+&= \frac{1}{2}\int_{2}^{4}\sigma(B,s)ds \\
+&= \frac{1}{2} \int_{2}^{4} \frac{5}{6}\left(2
+- \exp\left(\frac{3}{5}(2-s)\right)
+- \exp\left(\frac{3}{5}(s-4)\right)\right)ds \\
+&= \frac{5}{12} \left[2s + \frac{5}{3}\exp\left(\frac{3}{5}(2-s)\right)
+- \frac{5}{3}\exp\left(\frac{3}{5}(s-4)\right)\right]_{s=2}^{4} \\
+&= \frac{5}{12} \left[8 + \frac{5}{3}\exp\left(-\frac{6}{5}\right)
+- \frac{5}{3}\exp(0) - 4 - \frac{5}{3}\exp(0)
++ \frac{5}{3}\exp\left(-\frac{6}{5}\right)\right] \\
+&= \frac{5}{12} \left[4 - \frac{10}{3}
++ \frac{10}{3}\exp\left(-\frac{6}{5}\right)\right] \\
+&= \frac{5}{12} \left[\frac{2}{3}
++ \frac{10}{3}\exp\left(-\frac{6}{5}\right)\right] \\
+&= \frac{5}{18} + \frac{25}{18}\exp\left(-\frac{6}{5}\right).
+\end{align*}
+% \(\sigma(B,B)=0.6961031\) here.
+% Numerical integration is the notes got 0.6958757.
+
+\end{enumerate}
+
+\end{enumerate}
+
+\end{document}
