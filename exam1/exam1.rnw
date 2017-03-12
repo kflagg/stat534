@@ -1,0 +1,435 @@
+\documentclass[11pt]{article}
+\usepackage{fullpage,graphicx,float,amsmath,enumitem,fancyhdr}
+
+\setlist{parsep=5.5pt}
+\setlength{\parindent}{0pt}
+
+\newcommand\assignment{Stat 534 Exam 1}
+\newcommand\myname{Kenny Flagg}
+\newcommand\duedate{March 10, 2017}
+
+\pagestyle{fancy}
+\lhead{\assignment}
+\chead{\duedate}
+\rhead{\myname}
+\setlength{\headheight}{18pt}
+\setlength{\headsep}{2pt}
+
+\title{\assignment}
+\author{\myname}
+\date{\duedate}
+
+\begin{document}
+\maketitle
+
+<<setup, echo = FALSE, message = FALSE, cache = FALSE>>=
+library(knitr)
+library(extrafont)
+opts_chunk$set(echo = TRUE, comment = NA, message = FALSE,
+               show.signif.stars = FALSE,
+               fig.align = 'center', fig.width = 6.5, fig.height = 4,
+               fig.pos = 'H', size = 'footnotesize', dev = 'pdf',
+               dev.args = list(family = 'CM Roman', pointsize = 11))
+knit_theme$set('print')
+
+library(geoR)
+library(nlme)
+library(xtable)
+options(xtable.floating = FALSE,
+        xtable.sanitize.rownames.function = function(x) x,
+        xtable.sanitize.colnames.function = function(x) x,
+        width = 80, scipen = 2, show.signif.stars = FALSE)
+
+set.seed(87624)
+@
+
+\begin{enumerate}
+
+\item%1
+{\it Suppose we have an intrinsically stationary process with semivariogram}
+\begin{equation*}
+\left(\frac{1}{2}\right)Var\left(Z(\mathbf{s}_{i})-Z(\mathbf{s}_{j})\right)
+= \gamma\left(\mathbf{s}_{i}-\mathbf{s}_{j}\right)
+= \gamma\left(\mathbf{h}_{ij}\right)
+\end{equation*}
+{\it On an earlier homework you showed that}
+\begin{equation*}
+\sum_{i=1}^{n}\sum_{j=1}^{n}a_{i}a_{j}\gamma\left(\mathbf{h}_{ij}\right)
+\leq 0
+\end{equation*}
+{\it for any sites \(\mathbf{s}_{i}\), \(i=1,\dots,n\) and for any constants
+\(a_{i}\), \(i=1,\dots,n\) with \(\sum_{i=1}^{n}a_{i}=0\) but you did it under
+an assumption of second order stationarity. We will now establish it in
+general.}
+
+\begin{enumerate}
+\item%a
+{\it First show that \(\displaystyle
+-\left(\frac{1}{2}\right)\left\{\sum_{i=1}^{n}\sum_{j=1}^{n}
+a_{i}a_{j}\left(Z(\mathbf{s}_{i})-Z(\mathbf{s}_{j})\right)^{2}\right\}
+= \left\{\sum_{i=1}^{n}a_{i}Z(\mathbf{s}_{j})\right\}^{2}\).}
+
+Proof:
+\begin{align*}
+-\left(\frac{1}{2}\right)\left\{\sum_{i=1}^{n}\sum_{j=1}^{n}
+a_{i}a_{j}\left(Z(\mathbf{s}_{i})-Z(\mathbf{s}_{j})\right)^{2}\right\}
+&= -\left(\frac{1}{2}\right)\left\{\sum_{i=1}^{n}\sum_{j=1}^{n}
+a_{i}a_{j}\left(Z(\mathbf{s}_{i})^{2}
+- 2Z(\mathbf{s}_{i})Z(\mathbf{s}_{j})
++ Z(\mathbf{s}_{j})^{2}\right)\right\} \\
+&= -\frac{1}{2}\sum_{i=1}^{n}\sum_{j=1}^{n}a_{i}a_{j}Z(\mathbf{s}_{i})^{2}
++ \sum_{i=1}^{n}\sum_{j=1}^{n}a_{i}a_{j}Z(\mathbf{s}_{i})Z(\mathbf{s}_{j}) \\
+&\qquad - \frac{1}{2} \sum_{i=1}^{n}\sum_{j=1}^{n}a_{i}a_{j}
+Z(\mathbf{s}_{j})^{2} \\
+&= -\frac{1}{2}\sum_{i=1}^{n}a_{i}Z(\mathbf{s}_{i})^{2}\sum_{j=1}^{n}a_{j}
++ \sum_{i=1}^{n}a_{i}Z(\mathbf{s}_{i})\sum_{j=1}^{n}a_{j}Z(\mathbf{s}_{j}) \\
+&\qquad - \frac{1}{2}\sum_{j=1}^{n}a_{j}Z(\mathbf{s}_{j})^{2}
+\sum_{i=1}^{n}a_{i} \\
+&= 0 + \sum_{i=1}^{n}a_{i}Z(\mathbf{s}_{i})
+\sum_{j=1}^{n}a_{j}Z(\mathbf{s}_{j}) + 0 \\
+&= \left\{\sum_{i=1}^{n}a_{i}Z(\mathbf{s}_{i})\right\}^{2}.
+\end{align*}
+
+\item%b
+{\it Now take expectations of both sides to establish the result.}
+
+\begin{align*}
+\sum_{i=1}^{n}\sum_{j=1}^{n}a_{i}a_{j}\gamma\left(\mathbf{h}_{ij}\right)
+&= \left\{\sum_{i=1}^{n}\sum_{j=1}^{n}a_{i}a_{j}\left(\frac{1}{2}\right)
+\left(E\left[\left(Z(\mathbf{s}_{i})-Z(\mathbf{s}_{j})\right)^{2}
+\right]-\left[E(Z(\mathbf{s}_{i})-Z(\mathbf{s}_{j}))\right]^{2}
+\right)\right\} \\
+&= E\left[\left(\frac{1}{2}\right)\left\{\sum_{i=1}^{n}\sum_{j=1}^{n}
+a_{i}a_{j}\left(Z(\mathbf{s}_{i})-Z(\mathbf{s}_{j})\right)^{2}
+\right\}\right]
+- \frac{1}{2}\sum_{i=1}^{n}\sum_{j=1}^{n}a_{i}a_{j}
+(\mu(\mathbf{s}_{i})-\mu(\mathbf{s}_{j}))^{2} \\
+&= E\left[-\left\{\sum_{i=1}^{n}a_{i}Z(\mathbf{s}_{j})\right\}^{2}\right]
+- \frac{1}{2}\sum_{i=1}^{n}\sum_{j=1}^{n}a_{i}a_{j}\mu(\mathbf{s}_{i})^{2}
++ \sum_{i=1}^{n}\sum_{j=1}^{n}a_{i}a_{j}
+\mu(\mathbf{s}_{i})\mu(\mathbf{s}_{j}) \\
+&\qquad - \frac{1}{2}\sum_{i=1}^{n}\sum_{j=1}^{n}a_{i}a_{j}
+\mu(\mathbf{s}_{j})^{2} \\
+&= -E\left[\left\{\sum_{i=1}^{n}a_{i}Z(\mathbf{s}_{j})\right\}^{2}\right] 
+- \frac{1}{2}\sum_{i=1}^{n}a_{i}\mu(\mathbf{s}_{i})^{2}\sum_{j=1}^{n}a_{j}
++ \sum_{i=1}^{n}a_{i}\mu(\mathbf{s}_{i})
+\sum_{j=1}^{n}a_{j}\mu(\mathbf{s}_{j}) \\
+&\qquad - \frac{1}{2}\sum_{i=1}^{n}a_{i}\sum_{j=1}^{n}a_{j}
+\mu(\mathbf{s}_{j})^{2}\\
+&\leq 0.
+\end{align*}
+
+\end{enumerate}
+
+\item%2
+{\it Let \(X_{0} \sim Gamma(\alpha, \beta)\) with the parameterization}
+\begin{equation*}
+f(x)=\frac{1}{\Gamma(\alpha)\beta^{\alpha}}x^{\alpha-1}
+\exp(-x/\beta); \qquad x > 0
+\end{equation*}
+{\it and 0 elsewhere. Let \(X_{i} \sim Gamma(\alpha_{i}, \beta)\) for
+\(i=1,\dots,n\). We construct a one-dimensional regularly spaced random field
+at locations \(i=1,\dots,n\)}
+\begin{equation*}
+Z(s_{i}) = X_{0} + X_{i}; \qquad i=1,\dots,n.
+\end{equation*}
+{\it You can assume that \(X_{0},X_{1},\dots,X_{n}\) are independent.}
+
+\begin{enumerate}
+
+\item%a
+{\it What is the distribution of \(Z(s_{i})\)?}
+
+Because \(X_{0}\) and \(X_{i}\) are independent Gamma random variables,
+\begin{equation*}
+Z(s_{i}) = X_{0} + X_{i} \sim \mathrm{Gamma}(\alpha + \alpha_{i}, \beta).
+\end{equation*}
+
+\item%b
+{\it Find \(E(Z(s_{i}))\) and \(Var(Z(s_{i}))\). You can use known properties
+of the Gamma distribution to answer this question, i.e. you can just write
+down the answer if you know it or can find it.}
+
+\begin{equation*}
+E(Z(s_{i})) = \frac{\alpha + \alpha_{i}}{\beta}
+\qquad\text{ and }\qquad
+Var(Z(s_{i})) = \frac{\alpha + \alpha_{i}}{\beta^{2}}.
+\end{equation*}
+
+%\pagebreak
+\item%c
+{\it Find \(Cov(Z(s_{i}), Z(s_{j}))\) for \(i \neq j\).}
+
+If \(i \neq j\),
+\begin{align*}
+Cov(Z(s_{i}), Z(s_{j})) &= Cov(X_{0} + X_{i}, X_{0} + X_{j}) \\
+&= Var(X_{0}) + Cov(X_{0}, X_{j}) + Cov(X_{i}, X_{0}) + Cov(X_{i}, X_{j}) \\
+&= \frac{\alpha}{\beta^{2}} + 0 + 0 + 0 \\
+&= \frac{\alpha}{\beta^{2}}.
+\end{align*}
+
+\item%d
+{\it Is this a second-order stationary process? Justify your answer.}
+
+This process is not second order stationary because the mean and variance of
+\(Z(s_{i})\) vary by location.
+
+\end{enumerate}
+
+\item%3
+{\it The \texttt{lansing} data set in the \texttt{spatstat} package contains
+spatial locations of several different species of trees. We will be looking
+and comparing the distributions of black oaks and maples.}
+<<prob3_1, cache = TRUE>>=
+require(spatstat)
+data(lansing)
+blackoak <- split(lansing)$blackoak
+maple <- split(lansing)$maple
+@
+{\it The rectangular region is a unit square. Use the isotropic edge
+corrected version when applicable below. Answer the following questions. You
+will be computing several simulation envelopes below. Be patient and keep
+nsim=99, the default.}
+
+\begin{enumerate}
+
+\item%a
+{\it What does the \(K\) function measure?}
+
+The \(K\) function measures the average number of events within a radius
+\(h\) of a randomly-selected event, scaled by the intensity over the whole
+region.
+
+\item%b
+{\it It is often easier to interpret the \(L\) function than the \(K\)
+function. Based on the \(L\) function do the black oaks appear to be clustered
+or do they appear to be regularly distributed? Do the maples appear to be
+clustered or do they appear to be regularly distributed? Justify your answer.
+Simulation envelopes will help you give a better answer to this question.}
+
+<<prob3b1, cache = TRUE, dependson = 'prob3_1', results = 'hide'>>=
+par(mfrow = c(1, 2))
+Lblackoak <- envelope(blackoak, fun = Lest, correction = 'iso')
+plot(Lblackoak,.-r ~ r, legend = FALSE)
+Lmaple <- envelope(maple, fun = Lest, correction = 'iso')
+plot(Lmaple,.-r ~ r, legend = FALSE)
+@
+The black oaks appear to be clustered because the \(L\) function is larger
+than expected under complete spatial randomness, meaning trees tend to be
+closer together than expected. Likewise, the maples also appear to be
+clustered because their \(L\) function is larger than expected under CSR.
+
+\item%c
+{\it Compare the two \(L\) functions and discuss whether or not the 2
+processes appear to be the same. You can use the results from (a) but you
+should also look at the difference more formally using the following also
+provided in an attached script file.}
+<<prob3c1, cache = TRUE, dependson = 'prob3_1', results = 'hide'>>=
+require(splancs)
+# specify radii
+h <- seq(0, 0.5, l = 100)
+# get coordinates
+tree.poly <- list(x = c(blackoak$x, maple$x), y = c(blackoak$y, maple$y))
+# recompute the K functions
+kblackoak <- khat(as.points(blackoak), bboxx(bbox(as.points(tree.poly))), h)
+kmaple <- khat(as.points(maple), bboxx(bbox(as.points(tree.poly))), h)
+# get the differences
+k.diff <- kblackoak - kmaple
+# generate the envelope
+env <- Kenv.label(as.points(blackoak), as.points(maple),
+                  bboxx(bbox(as.points(tree.poly))), nsim = 99, s = h)
+# plot the results
+plot(h, seq(-0.15, 0.05, l = length(h)), type = 'n', ylab = 'Kdiff',
+     main = 'Envelopes for Kdiff')
+lines(h, k.diff)
+lines(h, env$low, lty = 2)
+lines(h, env$up, lty = 2)
+abline(h = 0)
+@
+
+At a glance, the plots in part (b) indicate that the processes are similar.
+For both, \(L(h)-h\) increases quickly until about \(h=0.15\) units and then
+levels off. However, the \(L\) function for black oaks is a bit larger than
+the \(L\) function for maples. We formally test equality of the \(L\) or \(K\)
+functions with a simulation envelope for \(K_{oak}(h) - K_{maple}(h)\). The
+observed difference in \(K\) functions is not contained entirely in the
+envelope, so we have evidence that the locations of the two tree species result
+from two separate processes.
+
+\pagebreak
+\item%d
+{\it Plot \(L_{ij} - h\) versus \(h\) for black oaks and maples.}
+<<prob3d1, cache = TRUE, dependson = 'prob3_1', results = 'hide'>>=
+Kplot <- envelope(lansing, Kcross, i = 'blackoak', j = 'maple')
+plot(Kplot, sqrt(./pi)-r ~ r, ylab = expression(L[ij] - h),
+     main = 'Cross L Function', legend = FALSE)
+@
+{\it What type of relationship between the point patterns of the two species
+of trees is indicated by this plot? Justify your answer.}
+
+The cross \(L\) function is smaller than expected under independence,
+indicating that fewer trees of one species than expected are found within a
+given distance of a tree of the other species. This suggests an inhibitory
+process where trees of the same species tend to cluster together rather than
+growing near trees of the other species.
+
+\item%e
+{\it Based on the above, comment on the null hypotheses of independence and
+random labeling.}
+
+In part (c) we found evidence that the processes differ between the species,
+so we reject the hypothesis of random labeling. In part (d) we found evidence
+that trees of one species tend not to grow near trees of the other species,
+so we reject the hypothesis of independence.
+
+\end{enumerate}
+
+\pagebreak
+\item%4
+{\it You were sent the wheat data set on a previous homework assignment. You
+want to predict the value of \(Z\) (yield) at an arbitrary location. Assume a
+pure nugget effect model.}
+
+\begin{enumerate}
+
+\item%a
+{\it What are the kriging weights and what is the predicted value?}
+
+<<prob4a1>>=
+wheat <- read.table('wheat.txt', header = TRUE)
+nrow(wheat)
+mean(wheat$z)
+@
+
+There are \(n = \Sexpr{nrow(wheat)}\) observations so the kriging weights are
+\(\lambda_{i} = \frac{1}{\Sexpr{nrow(wheat)}}\) for all \(i\). The predicted
+value is simply \(\bar{Z} = \Sexpr{sprintf('%.2f', mean(wheat$z))}\).
+
+\item%b
+{\it What is the estimate of the sill?}
+
+<<prob4b1>>=
+var(wheat$z)
+@
+
+The estimate of the sill is the sample variance, \(\widehat{\sigma}^{2}
+= \Sexpr{sprintf('%.2f', var(wheat$z))}\).
+
+\item%c
+{\it What is the kriging standard error (note that this is a prediction
+error)?}
+
+The kriging standard error is \(\displaystyle
+\sqrt{\widehat{Var}(Z) + \widehat{Var}(\bar{Z})}
+= \sqrt{\widehat{\sigma}^{2} + \frac{\widehat{\sigma}^{2}}{n}}
+= \Sexpr{sprintf('%.2f', var(wheat$z) * (1 + 1/nrow(wheat)))}\).
+
+\end{enumerate}
+
+\item%5
+{\it Carbon-Nitrogen data example: We looked at estimating the semivariogram
+of the residuals from a simple linear regression model of total carbon on
+total nitrogen in class. We used \texttt{gls} to do this (as part of
+incorporating a spatial covariance structure into the regression) specifying
+an exponential covariance model and estimating the parameters using both
+maximum likelihood and REML. Let's check to see what the \texttt{likfit}
+function in the \texttt{geoR} package would return as parameter estimates
+(nugget, practical range, and partial sill) and see if the results are
+comparable. Some of the relevant R code is included in the attached script
+file. Compare the estimates on page 11 of the Spatial Regression notes and
+the estimates you get out of \texttt{likfit}. Use the same starting values.}
+
+<<prob5_1, cache = TRUE, results = 'hide'>>=
+# Get the CN data.
+CN.dat <- read.table('CN.dat', header = TRUE)
+names(CN.dat) <- c('x', 'y', 'tn', 'tc', 'cn')
+CN.lm <- lm(tc ~ tn, data = CN.dat)
+resids <- residuals(CN.lm)
+
+# Convert to a geodata object.
+require(geoR)
+resids.dat <- cbind(CN.dat$x, CN.dat$y, resids)
+resids.dat <- data.frame(resids.dat)
+names(resids.dat) <- c('x', 'y', 'resids')
+resids.geodat <- as.geodata(resids.dat, coords.col = 1:2, data.col = 3)
+
+# Use likfit() on the residuals.
+CNlikexp.ml <- likfit(resids.geodat, cov.model = 'exponential',
+                      ini.cov.pars = c(0.00159, 15),
+                      fix.nugget = TRUE, nugget = 0,
+                      lik.method = 'ML')
+CNlikexp.reml <- likfit(resids.geodat, cov.model = 'exponential',
+                        ini.cov.pars = c(0.00159, 15),
+                        fix.nugget = TRUE, nugget = 0,
+                        lik.method = 'REML')
+CNlikexp.ml.nugget <- likfit(resids.geodat, cov.model = 'exponential',
+                             ini.cov.pars = c(0.00159, 15),
+                             fix.nugget = FALSE, nugget = 0.4 * 0.00159,
+                             lik.method = 'ML')
+CNlikexp.reml.nugget <- likfit(resids.geodat, cov.model = 'exponential',
+                               ini.cov.pars = c(0.00159, 15),
+                               fix.nugget = FALSE, nugget = 0.4 * 0.00159,
+                               lik.method = 'REML')
+
+# Now fit gls the models.
+CNglsexp.ml <- gls(tc ~ tn, data = CN.dat, method = 'ML',
+                   correlation = corExp(15, form = ~x+y))
+CNglsexp.reml <- gls(tc ~ tn, data = CN.dat, method = 'REML',
+                     correlation = corExp(15, form = ~x+y))
+CNglsexp.ml.nugget <- gls(tc ~ tn, data = CN.dat, method = 'ML',
+                          correlation = corExp(c(15, 0.4), form = ~x+y,
+                                                nugget = TRUE))
+CNglsexp.reml.nugget <- gls(tc ~ tn, data = CN.dat, method = 'REML',
+                            correlation = corExp(c(15, 0.4), form = ~x+y,
+                                                 nugget = TRUE))
+@
+<<prob5_2, eval = FALSE>>=
+# Put all this in a nice table.
+compare <- data.frame(
+  Model = paste('Exponential', rep(c('REML', 'ML'), 2)),
+  'Nugget (gls)' = c(NA, NA,
+                     coef(CNglsexp.reml.nugget$modelStruct$corStruct, unconstrained = FALSE)['nugget'],
+                     coef(CNglsexp.ml.nugget$modelStruct$corStruct, unconstrained = FALSE)['nugget']),
+  'Nugget (likfit)' = c(NA, NA,
+                        CNlikexp.reml.nugget$nugget /
+                          (CNlikexp.reml.nugget$sigmasq + CNlikexp.reml.nugget$nugget),
+                        CNlikexp.ml.nugget$nugget /
+                          (CNlikexp.ml.nugget$sigmasq + CNlikexp.ml.nugget$nugget)),
+   'Sill (gls)' = c(CNglsexp.reml$sigma^2,
+                    CNglsexp.ml$sigma^2,
+                    CNglsexp.reml.nugget$sigma^2,
+                    CNglsexp.ml.nugget$sigma^2),
+   'Sill (likfit)' = c(CNlikexp.reml$sigmasq,
+                       CNlikexp.ml$sigmasq,
+                       CNlikexp.reml.nugget$sigmasq + CNlikexp.reml.nugget$nugget,
+                       CNlikexp.ml.nugget$sigmasq + CNlikexp.ml.nugget$nugget),
+   'Range (gls)' = 3 * c(coef(CNglsexp.reml$modelStruct$corStruct, unconstrained = FALSE)['range'],
+                         coef(CNglsexp.ml$modelStruct$corStruct, unconstrained = FALSE)['range'],
+                         coef(CNglsexp.reml.nugget$modelStruct$corStruct, unconstrained = FALSE)['range'],
+                         coef(CNglsexp.ml.nugget$modelStruct$corStruct, unconstrained = FALSE)['range']),
+   'Range (likfit)' = c(CNlikexp.reml$practicalRange,
+                        CNlikexp.ml$practicalRange,
+                        CNlikexp.reml.nugget$practicalRange,
+                        CNlikexp.ml.nugget$practicalRange),
+   check.names = FALSE
+)
+print(xtable(compare, digits = 5), include.rownames = FALSE, size = 'footnotesize')
+@
+<<prob5_2, echo = FALSE, results = 'asis'>>=
+@
+
+Getting the output to be comparable took some work because \texttt{gls}'s
+``nugget'' is the proportion of the total sill and its ``sill'' is the total
+sill, while \texttt{likfit}'s ``nugget'' is the actual nugget and its
+``sill'' is the partial sill. To create the table above I adjusted the
+\texttt{likfit} output, adding the nugget to the partial sill so the ``sill''
+column shows the total sill, and dividing the nugget by the total sill so the
+nugget column is the proportion.
+
+The practical range estimates from \texttt{likfit} are a little smaller than
+those from \texttt{gls} but the sill and nugget estimates are essentially the
+same.
+
+\end{enumerate}
+
+\end{document}
