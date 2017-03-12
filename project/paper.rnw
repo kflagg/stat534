@@ -1,0 +1,62 @@
+\documentclass[11pt]{article}
+\usepackage{fullpage,graphicx,float,amsmath,enumitem,fancyhdr}
+
+\setlist{parsep=5.5pt}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5.5pt}
+
+\usepackage[backend=bibtex,style=authoryear,citestyle=authoryear-comp]{biblatex}
+\addbibresource{references.bib}
+
+\newcommand\assignment{Stat 534 Project: Point Process Intensity Surface Models}
+\newcommand\myname{Kenny Flagg}
+\newcommand\duedate{\today}
+
+\pagestyle{fancy}
+\lhead{Stat 534 Project}
+\chead{\duedate}
+\rhead{\myname}
+\setlength{\headheight}{18pt}
+\setlength{\headsep}{2pt}
+
+\title{\assignment}
+\author{\myname}
+\date{\duedate}
+
+\begin{document}
+\maketitle
+
+<<setup, echo = FALSE, message = FALSE, cache = FALSE>>=
+library(knitr)
+library(extrafont)
+opts_chunk$set(echo = FALSE, comment = NA, message = FALSE,
+               fig.path = 'proj_figure/', cache.path = 'proj_cache/',
+               show.signif.stars = FALSE,
+               fig.align = 'center', fig.width = 6.5, fig.height = 3,
+               fig.pos = 'H', size = 'footnotesize', dev = 'pdf',
+               dev.args = list(family = 'CM Roman', pointsize = 11))
+knit_theme$set('print')
+
+#library(xtable)
+options(xtable.table.placement = 'H', width = 80, scipen = 2,
+        show.signif.stars = FALSE)
+@
+
+
+\section{Introduction}
+
+
+\section{Surface Fitting}
+
+\textcite{baddeleycoeurjolly14,baddeleyturner,diggleetal,bermanturner}
+
+
+\section{Simple Example}
+
+
+\section{Simulation}
+
+
+\printbibliography
+
+\end{document}
