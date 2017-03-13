@@ -1,5 +1,5 @@
 \documentclass[11pt]{article}
-\usepackage{fullpage,graphicx,float,amsmath,enumitem,fancyhdr}
+\usepackage{fullpage,graphicx,float,amsmath,enumitem,fancyhdr,hyperref}
 
 \setlist{parsep=5.5pt}
 \setlength{\parindent}{0pt}
@@ -30,7 +30,7 @@
 library(knitr)
 library(extrafont)
 opts_chunk$set(echo = FALSE, comment = NA, message = FALSE,
-               fig.path = 'proj_figure/', cache.path = 'proj_cache/',
+               fig.path = 'paper_figure/', cache.path = 'paper_cache/',
                show.signif.stars = FALSE,
                fig.align = 'center', fig.width = 6.5, fig.height = 3,
                fig.pos = 'H', size = 'footnotesize', dev = 'pdf',
@@ -40,21 +40,67 @@ knit_theme$set('print')
 #library(xtable)
 options(xtable.table.placement = 'H', width = 80, scipen = 2,
         show.signif.stars = FALSE)
+
+library(spatstat)
+
+set.seed(83534)
 @
 
 
 \section{Introduction}
 
+unobserved point processes -- only observe events in subregions selected by
+practitioner but want to make inference about inhomogeneous intensity over
+entire region
+
+know something is in the vicinity but want to know where specifically --
+examples: endangered clustered plant species in underbrush of thick forest,
+conservationists want to know where the clusters are; subsurface geomagnetic
+anomalies that could be unexploded ordnance -- concerned with mapping the
+intensity of this realization, not estimating parameters of the process
+
 
 \section{Surface Fitting}
 
-\textcite{baddeleycoeurjolly14,baddeleyturner,diggleetal,bermanturner}
+\textcite{wp,digglebook,baddeleycoeurjolly14,baddeleyturner,diggleetal,bermanturner}
 
 
-\section{Simple Example}
+\section{Simple Examples}
+
+loglinear example from HW4
+
+<<hw4_1>>=
+observe_win <- setminus.owin(owin(c(0, 1), c(0, 1)),
+                             owin(c(0.5, 0.8), c(0.5, 0.8)))
+predict_win <- owin(c(-0.5, 1.5), c(-0.5, 1.5))
+hw4 <- rpoispp(function(x, y){exp(5 * x + 2 * y)}, win = observe_win)
+par(mar = c(0, 0, 0.5, 0))
+plot(hw4)
+@
+
+<<hw4_2>>=
+hw4_fit <- ppm(hw4, ~ x + y, correction = 'isotropic')
+hw4_pred <- predict(hw4_fit, window = predict_win, se = TRUE)
+par(mfrow = c(1, 2), mar = c(0, 0, 0.5, 2))
+plot(hw4_pred$estimate)
+plot(observe_win, add = TRUE, col = '#ffffff40', border = NA)
+points(hw4, pch = '.', col = 'white')
+plot(hw4_pred$se)
+plot(observe_win, add = TRUE, col = '#ffffff40', border = NA)
+points(hw4, pch = '.', col = 'white')
+@
+
+easy site, realization 2,000, 390 ft spacing
 
 
-\section{Simulation}
+\section{Simulation Study}
+
+
+\section{Discussion and Conclusion}
+
+
+\appendix
+\section{R Code Appendix}
 
 
 \printbibliography
