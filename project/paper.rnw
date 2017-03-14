@@ -37,8 +37,9 @@ opts_chunk$set(echo = FALSE, comment = NA, message = FALSE,
                dev.args = list(family = 'CM Roman', pointsize = 11))
 knit_theme$set('print')
 
-#library(xtable)
+library(xtable)
 options(xtable.table.placement = 'H', width = 80, scipen = 2,
+        xtable.sanitize.rownames.function = function(x){return(x)},
         show.signif.stars = FALSE)
 
 library(spatstat)
@@ -62,31 +63,59 @@ intensity of this realization, not estimating parameters of the process
 
 \section{Surface Fitting}
 
-\textcite{wp,digglebook,baddeleycoeurjolly14,baddeleyturner,diggleetal,bermanturner}
+\textcite{wp,digglebook,bermanturner}
 
 
 \section{Simple Examples}
 
-loglinear example from HW4
+log-linear example from HW4
 
-<<hw4_1>>=
+simulate from
+\begin{equation*}
+\log(\lambda(x,y)) = 5x + 2y; \quad (x, y) \in (0, 1)^{2}
+\end{equation*}
+but do not observe any events in \((0.5, 0.8)^{2}\). Then fit
+\begin{equation*}
+\log(\lambda(x,y)) = \beta_{0} + \beta_{1}x + \beta_{2}y
+\end{equation*}
+and predict on \((-0.5, 1.5)^{2}\).
+
+<<hw4_sim>>=
 observe_win <- setminus.owin(owin(c(0, 1), c(0, 1)),
                              owin(c(0.5, 0.8), c(0.5, 0.8)))
 predict_win <- owin(c(-0.5, 1.5), c(-0.5, 1.5))
 hw4 <- rpoispp(function(x, y){exp(5 * x + 2 * y)}, win = observe_win)
-par(mar = c(0, 0, 0.5, 0))
-plot(hw4)
 @
 
-<<hw4_2>>=
+<<hw4_plot, fig.cap = 'One realization of the loglinear intensity on a subset of the unit square.'>>=
+par(mar = c(0, 0, 1, 0))
+plot(hw4, main = 'Event Locations')
+@
+
+<<hw4_fit>>=
 hw4_fit <- ppm(hw4, ~ x + y, correction = 'isotropic')
 hw4_pred <- predict(hw4_fit, window = predict_win, se = TRUE)
-par(mfrow = c(1, 2), mar = c(0, 0, 0.5, 2))
-plot(hw4_pred$estimate)
-plot(observe_win, add = TRUE, col = '#ffffff40', border = NA)
+# By default hw4_pred is on a 128 by 128 grid.
+@
+
+<<hw4_fitcoefs, results = 'asis'>>=
+hw4_coef <- summary(hw4_fit)$coefs.SE.CI[,c('Estimate', 'S.E.')]
+rownames(hw4_coef) <- c('\\(\\widehat{\\beta_{0}}\\)',
+                        '\\(\\widehat{\\beta_{1}}\\)',
+                        '\\(\\widehat{\\beta_{2}}\\)')
+xtable(hw4_coef, label = 'hw4est',
+       caption = 'Estimated coefficients for the log-linear trend model.')
+@
+
+<<hw4_fitplot, fig.cap = 'Estimated log-intensity surface and log-scale prediction standard errors.'>>=
+par(mfrow = c(1, 2), mar = c(0, 0, 1.2, 2), las = 2)
+plot(log(hw4_pred$estimate), zlim = c(-4.5, 10.5),
+     main = expression(log(hat(lambda)(italic(list(x,y))))))
+plot(observe_win, add = TRUE, border = '#ffffff40')
 points(hw4, pch = '.', col = 'white')
-plot(hw4_pred$se)
-plot(observe_win, add = TRUE, col = '#ffffff40', border = NA)
+plot(log(hw4_pred$se), zlim = c(-4.5, 10.5),
+     main = expression(log(SE(hat(lambda)(italic(list(x,y)))))))
+plot(observe_win, add = TRUE, border = '#ffffff40')
 points(hw4, pch = '.', col = 'white')
 @
 
