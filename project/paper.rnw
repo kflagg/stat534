@@ -8,7 +8,8 @@
 \usepackage[backend=bibtex,style=authoryear,citestyle=authoryear-comp]{biblatex}
 \addbibresource{references.bib}
 
-\newcommand\assignment{Stat 534 Project: Point Process Intensity Surface Models}
+\newcommand\assignment{Stat 534 Project: \\
+Extrapolation from Poisson Process Intensity Surface Models}
 \newcommand\myname{Kenny Flagg}
 \newcommand\duedate{\today}
 
@@ -50,20 +51,49 @@ set.seed(83534)
 
 \section{Introduction}
 
-unobserved point processes -- only observe events in subregions selected by
-practitioner but want to make inference about inhomogeneous intensity over
-entire region
+One little-studied use of inhomogeneous point process intensity estimation
+is the use of an intensity surface model fit to events in a subregion to
+predict the intensity over the entire region of interest. This procedure would
+be relevant whenver it is known or suspected that some type of plant, animal,
+or other item occurs in the region, and the goal of the analysis is to map the
+trend in where these tend to be located rather than estimate parameters of
+some process at work across hypothetical replicates of similar regions. It may
+be prohibitively expensive or difficult to observe all events over the entire
+region, so a sample of subregions is taken. For example, conservationists want
+to study the spatial distribution of an endangered plant across a large region
+of thick jungle so that they can establish a preserve where the plant is
+protected. They cannot search the entire jungle, so they take a simple random
+sample of quadrats and record the locations of the plants in the quadrats.
+They will then want to fit a model describing the trends in intensity of these
+plants extrapolated over the entire jungle. In this setting, the objective is
+to map the realized spatial intensity of the plant over this jungle so that
+these plants can be protected, not to estimate parameters of the process that
+arranges plants of this species at jungles like this one.
 
-know something is in the vicinity but want to know where specifically --
-examples: endangered clustered plant species in underbrush of thick forest,
-conservationists want to know where the clusters are; subsurface geomagnetic
-anomalies that could be unexploded ordnance -- concerned with mapping the
-intensity of this realization, not estimating parameters of the process
+Another situation where it is useful to extrapolate point pattern intensity
+outside of the observed region is in mapping subsurface geomagnetic anomalies,
+such as the munitions debris found at former military test ranges. This is
+frequently done in the early stages of an unexploded ordnance (UXO)
+remediation, where the intensity surface of inert munitions fragments is
+used to identify the locations of targets so that the search for UXO can be
+focused on the sections of the site most likely to contain it. The anomalies
+are only observed when detection equipment passes directly over them, but the
+project leaders are concerened with finding UXO and do not want to waste
+resources finding every inert fragment that could be found by metal detectors.
+The most common data collection method is to take a systematic sample of
+ straight-line transects and observe anomalies in rectangular regions centered
+along the transects. Frequently, moving averages of the intensity are computed
+in circular windows and an intensity map is produced using ordinary kriging to
+predict the intensity in a grid of these windows, but this assumes
+stationarity when the moving averages are believed to be non-stationary,
+ignores the point process nature of the data, and is very sensitive to the
+window size~\parencite{vspguide,wp}. In this project, I explore the use of
+polynomial trend surface models for the log-intensity at a simulated UXO site.
 
 
 \section{Surface Fitting}
 
-\textcite{wp,digglebook,bermanturner}
+\textcite{digglebook,bermanturner}
 
 
 \section{Simple Examples}
@@ -81,51 +111,95 @@ but do not observe any events in \((0.5, 0.8)^{2}\). Then fit
 and predict on \((-0.5, 1.5)^{2}\).
 
 <<hw4_sim>>=
-observe_win <- setminus.owin(owin(c(0, 1), c(0, 1)),
-                             owin(c(0.5, 0.8), c(0.5, 0.8)))
+simulate_win <- owin(c(0, 1), c(0, 1))
+observe_win <- setminus.owin(simulate_win, owin(c(0.5, 0.8), c(0.5, 0.8)))
 predict_win <- owin(c(-0.5, 1.5), c(-0.5, 1.5))
-hw4 <- rpoispp(function(x, y){exp(5 * x + 2 * y)}, win = observe_win)
+hw4 <- rpoispp(function(x, y){exp(5 * x + 2 * y)}, win = simulate_win)
 @
 
-<<hw4_plot, fig.cap = 'One realization of the loglinear intensity on a subset of the unit square.'>>=
+<<hw4_plot, fig.cap = 'One realization of a Poisson process with log-linear intensity on the unit square.'>>=
 par(mar = c(0, 0, 1, 0))
 plot(hw4, main = 'Event Locations')
 @
 
-<<hw4_fit>>=
-hw4_fit <- ppm(hw4, ~ x + y, correction = 'isotropic')
-hw4_pred <- predict(hw4_fit, window = predict_win, se = TRUE)
-# By default hw4_pred is on a 128 by 128 grid.
+<<hw4_fit_all>>=
+hw4_fit_a <- ppm(hw4 ~ x + y, correction = 'isotropic')
+hw4_pred_a <- predict(hw4_fit_a, window = predict_win, se = TRUE)
+# By default predictions are on a 128 by 128 grid.
+@
+<<hw4_fit_unobserved>>=
+hw4_fit_u <- ppm(hw4[observe_win] ~ x + y, correction = 'isotropic')
+hw4_pred_u <- predict(hw4_fit_u, window = predict_win, se = TRUE)
 @
 
-<<hw4_fitcoefs, results = 'asis'>>=
-hw4_coef <- summary(hw4_fit)$coefs.SE.CI[,c('Estimate', 'S.E.')]
-rownames(hw4_coef) <- c('\\(\\widehat{\\beta_{0}}\\)',
-                        '\\(\\widehat{\\beta_{1}}\\)',
-                        '\\(\\widehat{\\beta_{2}}\\)')
-xtable(hw4_coef, label = 'hw4est',
-       caption = 'Estimated coefficients for the log-linear trend model.')
+<<hw4_fitcoefs_a, results = 'asis'>>=
+hw4_coef_a <- summary(hw4_fit_a)$coefs.SE.CI[,c('Estimate', 'S.E.')]
+rownames(hw4_coef_a) <- c('\\(\\widehat{\\beta_{0}}\\)',
+                          '\\(\\widehat{\\beta_{1}}\\)',
+                          '\\(\\widehat{\\beta_{2}}\\)')
+xtable(hw4_coef_a, label = 'hw4esta',
+       caption = 'Estimated coefficients for the log-linear trend model fit using the full region.')
 @
 
-<<hw4_fitplot, fig.cap = 'Estimated log-intensity surface and log-scale prediction standard errors.'>>=
-par(mfrow = c(1, 2), mar = c(0, 0, 1.2, 2), las = 2)
-plot(log(hw4_pred$estimate), zlim = c(-4.5, 10.5),
-     main = expression(log(hat(lambda)(italic(list(x,y))))))
-plot(observe_win, add = TRUE, border = '#ffffff40')
+<<hw4_fitcoefs_u, results = 'asis'>>=
+hw4_coef_u <- summary(hw4_fit_u)$coefs.SE.CI[,c('Estimate', 'S.E.')]
+rownames(hw4_coef_u) <- c('\\(\\widehat{\\beta_{0}}\\)',
+                          '\\(\\widehat{\\beta_{1}}\\)',
+                          '\\(\\widehat{\\beta_{2}}\\)')
+xtable(hw4_coef_u, label = 'hw4estu',
+       caption = 'Estimated coefficients for the log-linear trend model fit using a subset of the region.')
+@
+
+<<hw4_fitplot, fig.pos = 'p', fig.height = 8, fig.cap = 'Estimated log-intensity surface, log-scale prediction standard errors, and prediction coeffiecient of variation from models fit using all events in the full simulation region (left) and events in a subset of the simulation region (right). The regions and event locations are overlaid in white.'>>=
+par(mfrow = c(3, 2), mar = c(0, 0, 1.2, 2), las = 2, cex = 1)
+
+plot(log(hw4_pred_a$estimate), zlim = c(-4.5, 10.5),
+     main = expression(log(hat(lambda)[f](italic(list(x,y))))))
+plot(simulate_win, add = TRUE, border = '#ffffff40')
 points(hw4, pch = '.', col = 'white')
-plot(log(hw4_pred$se), zlim = c(-4.5, 10.5),
-     main = expression(log(SE(hat(lambda)(italic(list(x,y)))))))
+
+plot(log(hw4_pred_u$estimate), zlim = c(-4.5, 10.5),
+     main = expression(log(hat(lambda)[s](italic(list(x,y))))))
 plot(observe_win, add = TRUE, border = '#ffffff40')
+points(hw4[observe_win], pch = '.', col = 'white')
+
+plot(log(hw4_pred_a$se), zlim = c(-4.5, 10.5),
+     main = expression(log(SE(hat(lambda)[f](italic(list(x,y)))))))
+plot(simulate_win, add = TRUE, border = '#ffffff40')
 points(hw4, pch = '.', col = 'white')
+
+plot(log(hw4_pred_u$se), zlim = c(-4.5, 10.5),
+     main = expression(log(SE(hat(lambda)[s](italic(list(x,y)))))))
+plot(observe_win, add = TRUE, border = '#ffffff40')
+points(hw4[observe_win], pch = '.', col = 'white')
+
+plot(hw4_pred_a$se/hw4_pred_a$estimate, zlim = c(0, 1),
+     main = expression(SE(hat(lambda)[f](italic(list(x,y)))) /
+                         hat(lambda)[f](italic(list(x,y)))))
+plot(simulate_win, add = TRUE, border = '#ffffff40')
+points(hw4, pch = '.', col = 'white')
+
+plot(hw4_pred_u$se/hw4_pred_u$estimate, zlim = c(0, 1),
+     main = expression(SE(hat(lambda)[s](italic(list(x,y)))) /
+                         hat(lambda)[s](italic(list(x,y)))))
+plot(observe_win, add = TRUE, border = '#ffffff40')
+points(hw4[observe_win], pch = '.', col = 'white')
 @
 
 easy site, realization 2,000, 390 ft spacing
+
+use \texttt{polynom()} not \texttt{poly()}!
 
 
 \section{Simulation Study}
 
 
 \section{Discussion and Conclusion}
+
+smallish SEs outside observed region because of faith in the model form --
+need model checking
+
+how much of the region do you need to observe to trust your model?
 
 
 \appendix
