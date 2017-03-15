@@ -51,24 +51,25 @@ set.seed(83534)
 
 \section{Introduction}
 
-One little-studied use of inhomogeneous point process intensity estimation
-is the use of an intensity surface model fit to events in a subregion to
-predict the intensity over the entire region of interest. This procedure would
-be relevant whenver it is known or suspected that some type of plant, animal,
-or other item occurs in the region, and the goal of the analysis is to map the
-trend in where these tend to be located rather than estimate parameters of
-some process at work across hypothetical replicates of similar regions. It may
-be prohibitively expensive or difficult to observe all events over the entire
-region, so a sample of subregions is taken. For example, conservationists want
-to study the spatial distribution of an endangered plant across a large region
-of thick jungle so that they can establish a preserve where the plant is
-protected. They cannot search the entire jungle, so they take a simple random
-sample of quadrats and record the locations of the plants in the quadrats.
-They will then want to fit a model describing the trends in intensity of these
-plants extrapolated over the entire jungle. In this setting, the objective is
-to map the realized spatial intensity of the plant over this jungle so that
-these plants can be protected, not to estimate parameters of the process that
-arranges plants of this species at jungles like this one.
+One little-studied application of inhomogeneous point process intensity
+estimation is the use of an intensity surface estimated from events in a
+subregion to predict the intensity over the entire region of interest. This
+procedure would be relevant whenver it is known or suspected that some type of
+plant, animal, or other item occurs in the region, and the goal of the
+analysis is to map the trend in where these tend to be located rather than
+estimate parameters of some process at work across hypothetical replicates of
+similar regions. It may be prohibitively expensive or difficult to observe all
+events over the entire region, so a sample of subregions is taken. For
+example, conservationists want to study the spatial distribution of an
+endangered plant across a large region of thick jungle so that they can
+establish a preserve where the plant is protected. They cannot search the
+entire jungle, so they take a simple random sample of quadrats and record the
+locations of the plants in those quadrats. They will then want to fit a model
+describing the trends in intensity of these plants extrapolated over the
+entire jungle. In this setting, the objective is to map the realized spatial
+intensity of the plant over this jungle so that these plants can be protected,
+not to estimate parameters of the process that arranges plants of this species
+at jungles like this one.
 
 Another situation where it is useful to extrapolate point pattern intensity
 outside of the observed region is in mapping subsurface geomagnetic anomalies,
@@ -81,19 +82,72 @@ are only observed when detection equipment passes directly over them, but the
 project leaders are concerened with finding UXO and do not want to waste
 resources finding every inert fragment that could be found by metal detectors.
 The most common data collection method is to take a systematic sample of
- straight-line transects and observe anomalies in rectangular regions centered
+straight-line transects and observe anomalies in rectangular regions centered
 along the transects. Frequently, moving averages of the intensity are computed
 in circular windows and an intensity map is produced using ordinary kriging to
-predict the intensity in a grid of these windows, but this assumes
-stationarity when the moving averages are believed to be non-stationary,
-ignores the point process nature of the data, and is very sensitive to the
-window size~\parencite{vspguide,wp}. In this project, I explore the use of
-polynomial trend surface models for the log-intensity at a simulated UXO site.
+predict the intensity in a grid of these windows. There are several problems
+with this approach: it assumes stationarity when the moving averages are
+believed to be non-stationary, it ignores the point process nature of the
+data, and it is very sensitive to the window size~\parencite{vspguide,wp}. In
+this project, I explore the use of polynomial trend surface models for the
+log-intensity at a simulated UXO site.
 
 
 \section{Surface Fitting}
 
-\textcite{digglebook,bermanturner}
+It is theoretically possible to use maximum likelihood or maximum
+pseudo-likelihood methods to fit trend surface models or regression models
+(with covariates) for the intensity of an inhomogeneous point process, but
+these are not widely used because, in the most general cases, the problems
+are ``notoriously intractable''~\parencite{digglebook}. However, for spatial
+Poisson processes, trend surface models are tenable with the help of some
+numerical methods.
+
+The log-likelihood of an unmarked Poisson process on a region \(D\) with
+intensity \(\lambda(\mathbf{s})\) is found by conditioning on the number of
+events in the following manner. The number of events in \(D\) follows a
+Poisson distribution with mean \(\mu=\int_{D}\lambda(\mathbf{s})d\mathbf{s}\).
+Given that \(n\) events occured, their locations \(\mathbf{s}_{1},\dots,
+\mathbf{s}_{n}\) are independent and identically distributed with density
+\(\lambda(\mathbf{s})/\mu\). Then the log-likelihood of the intensity is
+\begin{align*}
+\ell(\lambda) &= \left(-\mu + n\log(\mu) - \log(n!)\right)
++ \left(\sum_{i=1}^{n}\left[\log\left(\lambda(\mathbf{s}_{i})\right)
+- \log(\mu)\right]\right) \\
+&= \sum_{i=1}^{n}\log\left(\lambda(\mathbf{s}_{i})\right)
+-\int_{D}\lambda(\mathbf{s})d\mathbf{s} - \log(n!).
+\end{align*}
+A natural way to model the intensity is to define a log-linear model
+\begin{equation*}
+\log(\lambda(\mathbf{s})) = \mathbf{x}(\mathbf{s})^{T}\boldsymbol{\beta}
+\end{equation*}
+where \(\mathbf{x}(\mathbf{s})\) can, in principle, include functions of the
+spatial coordinates and also covariates. Unfortunately, the likelihood becomes
+\begin{equation*}
+\sum_{i=1}^{n}\mathbf{x}(\mathbf{s})^{T}\boldsymbol{\beta}
+-\int_{D}\exp\left(\mathbf{x}(\mathbf{s})^{T}
+\boldsymbol{\beta}\right)d\mathbf{s} - \log(n!)
+\end{equation*}
+so \(\mathbf{x}(\mathbf{s})\) must be known (or predicted) either across the
+entire region \(D\) or at enough locations to approximate the integral
+numerically. Thus, covariates require some extra data collection or modeling
+effort to incorporate, but trend surfaces are feasible.
+
+\textcite{bermanturner} proposed a practical method for fitting these models
+with generalized linear models software using quadratic approximations to the
+likelihood, even generalizing to other link functions besides the log link.
+Their method is based on partitioning \(D\) such that each subset in the
+partition contains at most one event, and then using a binomial or Poission
+distribution for the count of events in each subset. This was followed up by
+\textcite{baddeleycoeurjolly14}, who developed a logistic regression-based
+approach that avoids the quadratic approximation, thereby reducing bias in the
+coefficient estimates. Both methods are available in the \texttt{spatstat}
+package~\parencite{spatstat} for R~\parencite{baser}. The \texttt{spatstat}
+function \texttt{ppm} implements these methods using the base R \texttt{glm}
+function to maximize the likelihood; I will use the Berman and Turner method
+because it is the default in \texttt{ppm} and therefore better reflects the
+experience of a na\"{i}ve practitioner who is not an expert on spatial point
+processes.
 
 
 \section{Simple Examples}
@@ -192,6 +246,11 @@ use \texttt{polynom()} not \texttt{poly()}!
 
 
 \section{Simulation Study}
+
+What to compare? MSPE for this method vs the moving average kriging? I'd
+like to cross-validate (could leave one transect out) but I don't know how to
+contruct a criterion. Maybe compare modeled intensity within the rectangle to
+a kernel intensity estimate?
 
 
 \section{Discussion and Conclusion}
