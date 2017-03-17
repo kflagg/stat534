@@ -33,7 +33,7 @@ library(extrafont)
 opts_chunk$set(echo = FALSE, comment = NA, message = FALSE,
                fig.path = 'paper_figure/', cache.path = 'paper_cache/',
                show.signif.stars = FALSE,
-               fig.align = 'center', fig.width = 6.5, fig.height = 3,
+               fig.align = 'center', fig.width = 6.5, fig.height = 2.5,
                fig.pos = 'H', size = 'footnotesize', dev = 'pdf',
                dev.args = list(family = 'CM Roman', pointsize = 11))
 knit_theme$set('print')
@@ -42,7 +42,9 @@ library(xtable)
 options(xtable.table.placement = 'H', width = 80, scipen = 2,
         xtable.sanitize.rownames.function = function(x){return(x)},
         show.signif.stars = FALSE)
+@
 
+<<packages, message = FALSE, cache = FALSE>>=
 library(spatstat)
 
 set.seed(83534)
@@ -89,11 +91,11 @@ predict the intensity in a grid of these windows. There are several problems
 with this approach: it assumes stationarity when the moving averages are
 believed to be non-stationary, it ignores the point process nature of the
 data, and it is very sensitive to the window size~\parencite{vspguide,wp}. In
-this project, I explore the use of polynomial trend surface models for the
+this project, I evaluate the use of polynomial trend surface models for the
 log-intensity at a simulated UXO site.
 
 
-\section{Surface Fitting}
+\section{Surface Fitting by Maximum Likelihood}
 
 It is theoretically possible to use maximum likelihood or maximum
 pseudo-likelihood methods to fit trend surface models or regression models
@@ -111,9 +113,9 @@ Given that \(n\) events occured, their locations \(\mathbf{s}_{1},\dots,
 \mathbf{s}_{n}\) are independent and identically distributed with density
 \(\lambda(\mathbf{s})/\mu\). Then the log-likelihood of the intensity is
 \begin{align*}
-\ell(\lambda) &= \left(-\mu + n\log(\mu) - \log(n!)\right)
-+ \left(\sum_{i=1}^{n}\left[\log\left(\lambda(\mathbf{s}_{i})\right)
-- \log(\mu)\right]\right) \\
+\ell(\lambda) &= \left\{-\mu + n\log(\mu) - \log(n!)\right\}
++ \sum_{i=1}^{n}\left\{\log\left(\lambda(\mathbf{s}_{i})\right)
+- \log(\mu)\right\} \\
 &= \sum_{i=1}^{n}\log\left(\lambda(\mathbf{s}_{i})\right)
 -\int_{D}\lambda(\mathbf{s})d\mathbf{s} - \log(n!).
 \end{align*}
@@ -134,111 +136,182 @@ numerically. Thus, covariates require some extra data collection or modeling
 effort to incorporate, but trend surfaces are feasible.
 
 \textcite{bermanturner} proposed a practical method for fitting these models
-with generalized linear models software using quadratic approximations to the
-likelihood, even generalizing to other link functions besides the log link.
+with generalized linear model (GLM) software using quadratic approximations to
+the likelihood, even generalizing to other link functions besides the log link.
 Their method is based on partitioning \(D\) such that each subset in the
-partition contains at most one event, and then using a binomial or Poission
-distribution for the count of events in each subset. This was followed up by
-\textcite{baddeleycoeurjolly14}, who developed a logistic regression-based
-approach that avoids the quadratic approximation, thereby reducing bias in the
-coefficient estimates. Both methods are available in the \texttt{spatstat}
-package~\parencite{spatstat} for R~\parencite{baser}. The \texttt{spatstat}
-function \texttt{ppm} implements these methods using the base R \texttt{glm}
-function to maximize the likelihood; I will use the Berman and Turner method
-because it is the default in \texttt{ppm} and therefore better reflects the
-experience of a na\"{i}ve practitioner who is not an expert on spatial point
-processes.
+partition contains at most one event, and then maximizing a weighted
+pseudolikelihood based upon a binomial or Poission distribution for the count
+of events in each subset. They comment that the covariance matrices produced
+by standard GLM software under this method are reasonable approximations to
+the correct covariance matrices that would be derived from the true likelihood
+as long as the quadrature approximation of the likelihood converges to the
+true likelihood as the resolution of the partition is increased.
+This was followed up by \textcite{baddeleycoeurjolly14}, who developed a
+logistic regression-based approach that avoids the quadratic approximation,
+thereby reducing bias in the coefficient estimates. Both methods are available
+in the \texttt{spatstat} package~\parencite{spatstat} for R~\parencite{baser}.
+The \texttt{spatstat} function \texttt{ppm} implements these methods using the
+base R \texttt{glm} function to maximize the likelihood; I will use the Berman
+and Turner method because it is the default in \texttt{ppm} and therefore
+better reflects the experience of a na\"{i}ve practitioner who is not an
+expert on spatial point processes.
 
 
-\section{Simple Examples}
+\section{Examples}
 
-log-linear example from HW4
+To illustrate model fitting and prediction, I present two examples before
+proceeding to the simulation study. The first is a toy example where I
+simulate from a Poisson process with a true log-linear intensity function and
+then estimate coefficients using the true model form. The second example
+introduces the my UXO site and provides a case study of fitting a polynomial
+trend surface to one realization of the the site.
 
-simulate from
+
+\subsection{True Log-Linear Intensity Surface}
+
+Previously this semester, we worked with an example of a Poisson process on
+the unit square \(\{(x,y):0<x<1,0<y<1\}\) with the log-linear intensity
+surface
 \begin{equation*}
-\log(\lambda(x,y)) = 5x + 2y; \quad (x, y) \in (0, 1)^{2}
+\log(\lambda(x,y)) = 5x + 2y.
 \end{equation*}
-but do not observe any events in \((0.5, 0.8)^{2}\). Then fit
+I will continue this example, fitting the model
 \begin{equation*}
 \log(\lambda(x,y)) = \beta_{0} + \beta_{1}x + \beta_{2}y
 \end{equation*}
-and predict on \((-0.5, 1.5)^{2}\).
+first using the process observed over the full region (the entire unit
+square), and then using the process observed in a subregion treating
+\(\{(x,y):0.6<x<0.9,0.6<y<0.9\}\) as unobserved. This unobserved section is a
+region of relatively high intensity, so if the estimation or prediction
+methods are sensitive to the observation window I expect omitting this
+section to have a large effect.
+
+I will use both estimated models to predict on
+\(\{(x,y):-0.5<x<1.5,-0.5<y<1.5\}\). Figure~\ref{fig:hw4_plot} shows the
+realization of this process that I will use for both model fits.
 
 <<hw4_sim>>=
 simulate_win <- owin(c(0, 1), c(0, 1))
-observe_win <- setminus.owin(simulate_win, owin(c(0.5, 0.8), c(0.5, 0.8)))
+omit_win <- owin(c(0.6, 0.9), c(0.6, 0.9))
+observe_win <- setminus.owin(simulate_win, omit_win)
 predict_win <- owin(c(-0.5, 1.5), c(-0.5, 1.5))
 hw4 <- rpoispp(function(x, y){exp(5 * x + 2 * y)}, win = simulate_win)
 @
 
-<<hw4_plot, fig.cap = 'One realization of a Poisson process with log-linear intensity on the unit square.'>>=
+<<hw4_plot, fig.pos = 'b!', fig.cap = 'One realization of a Poisson process with log-linear intensity on the unit square. The dashed square shows the outline of the ``unobserved" region; when fitting the model to the subregion, the points inside it will be discarded and it will not be considered in constructing the approximation to the likelihood.'>>=
 par(mar = c(0, 0, 1, 0))
 plot(hw4, main = 'Event Locations')
+plot(omit_win, lty = 2, add = TRUE)
 @
 
-<<hw4_fit_all>>=
-hw4_fit_a <- ppm(hw4 ~ x + y, correction = 'isotropic')
-hw4_pred_a <- predict(hw4_fit_a, window = predict_win, se = TRUE)
+For clarity, I denote the estimated models as
+\begin{equation*}
+\log\left(\widehat{\lambda}_{f}(x,y)\right) = \widehat{\beta}^{(f)}_{0}
++ \widehat{\beta}^{(f)}_{1}x + \widehat{\beta}^{(f)}_{2}y
+\end{equation*}
+for the model fit to the full region, and
+\begin{equation*}
+\log\left(\widehat{\lambda}_{s}(x,y)\right) = \widehat{\beta}^{(s)}_{0}
++ \widehat{\beta}^{(s)}_{1}x + \widehat{\beta}^{(s)}_{2}y
+\end{equation*}
+for the model fit to the subregion. I use \texttt{ppm} to fit the models
+with its default likelihood approximation and isotropic edge correction.
+The coefficitents and standard errors are similar for both estimated models,
+and the true values \(\beta_{0} = 0\), \(\beta_{1} = 5\), and
+\(\beta_{2} = 2\) all fall within one standard error of the
+estimates~(Tables~\ref{hw4estf} and \ref{hw4ests}).
+
+After estimating the models, I use \texttt{spatstat}'s \texttt{predict.ppm}
+method to predict the intensity surface on a \(128 \times 128\) lattice of
+locations in the region
+\(\{(x,y):-0.5<x<1.5,-0.5<y<1.5\}\)~(Figure~\ref{fig:hw4_fitplot}). As
+expected from the similarity of the coefficient estimates, the predicted
+log-intensity surfaces for both models show very similar linear trends~(top
+row of the figure). At a glance the prediction standard errors for both
+models appear similar to the predicted intensities, as seen in the middle
+row of the figure~(shown on a logarithmic scale for visibility). In a linear
+model setting we would expect the prediction standard error to increase with
+the distance from the observations, but no such trend is apparent here; even
+in the bottom left of the prediction region the standard errors decrease as
+the predicted intensity decreases. However, it is illuminating to plot the
+predictor's relative standard error (the ratio of the standard error to the
+predicted intensity, bottom row of the figure). This ratio is not constant,
+and in fact it is lowest where the highest intensity of events was observed.
+
+In summary, the estimation procedure does an adequate job of estimating the
+parameters of the true model for these data, and the standard error of the
+predicted intensity appears to be more strongly related to the distance from
+the observed events than to the distance from the observed region.
+
+<<hw4_fit_full>>=
+hw4_fit_f <- ppm(hw4 ~ x + y, correction = 'isotropic')
+hw4_pred_f <- predict(hw4_fit_f, window = predict_win, se = TRUE)
 # By default predictions are on a 128 by 128 grid.
 @
-<<hw4_fit_unobserved>>=
-hw4_fit_u <- ppm(hw4[observe_win] ~ x + y, correction = 'isotropic')
-hw4_pred_u <- predict(hw4_fit_u, window = predict_win, se = TRUE)
+
+<<hw4_fit_s>>=
+hw4_fit_s <- ppm(hw4[observe_win] ~ x + y, correction = 'isotropic')
+hw4_pred_s <- predict(hw4_fit_s, window = predict_win, se = TRUE)
 @
 
-<<hw4_fitcoefs_a, results = 'asis'>>=
-hw4_coef_a <- summary(hw4_fit_a)$coefs.SE.CI[,c('Estimate', 'S.E.')]
-rownames(hw4_coef_a) <- c('\\(\\widehat{\\beta_{0}}\\)',
-                          '\\(\\widehat{\\beta_{1}}\\)',
-                          '\\(\\widehat{\\beta_{2}}\\)')
-xtable(hw4_coef_a, label = 'hw4esta',
-       caption = 'Estimated coefficients for the log-linear trend model fit using the full region.')
+<<hw4_fitcoefs_f, results = 'asis'>>=
+hw4_coef_f <- summary(hw4_fit_f)$coefs.SE.CI[,c('Estimate', 'S.E.')]
+rownames(hw4_coef_f) <- c('\\(\\widehat{\\beta}^{(f)}_{0}\\)',
+                          '\\(\\widehat{\\beta}^{(f)}_{1}\\)',
+                          '\\(\\widehat{\\beta}^{(f)}_{2}\\)')
+print(xtable(hw4_coef_f, label = 'hw4estf',
+             caption = 'Estimated coefficients for the log-linear trend model fit using the full region.'),
+      table.placement = 't!')
 @
 
-<<hw4_fitcoefs_u, results = 'asis'>>=
-hw4_coef_u <- summary(hw4_fit_u)$coefs.SE.CI[,c('Estimate', 'S.E.')]
-rownames(hw4_coef_u) <- c('\\(\\widehat{\\beta_{0}}\\)',
-                          '\\(\\widehat{\\beta_{1}}\\)',
-                          '\\(\\widehat{\\beta_{2}}\\)')
-xtable(hw4_coef_u, label = 'hw4estu',
-       caption = 'Estimated coefficients for the log-linear trend model fit using a subset of the region.')
+<<hw4_fitcoefs_s, results = 'asis'>>=
+hw4_coef_s <- summary(hw4_fit_s)$coefs.SE.CI[,c('Estimate', 'S.E.')]
+rownames(hw4_coef_s) <- c('\\(\\widehat{\\beta}^{(s)}_{0}\\)',
+                          '\\(\\widehat{\\beta}^{(s)}_{1}\\)',
+                          '\\(\\widehat{\\beta}^{(s)}_{2}\\)')
+print(xtable(hw4_coef_s, label = 'hw4ests',
+             caption = 'Estimated coefficients for the log-linear trend model fit using the subregion.'),
+      table.placement = 't!')
 @
 
-<<hw4_fitplot, fig.pos = 'p', fig.height = 8, fig.cap = 'Estimated log-intensity surface, log-scale prediction standard errors, and prediction coeffiecient of variation from models fit using all events in the full simulation region (left) and events in a subset of the simulation region (right). The regions and event locations are overlaid in white.'>>=
-par(mfrow = c(3, 2), mar = c(0, 0, 1.2, 2), las = 2, cex = 1)
+<<hw4_fitplot, fig.pos = 'p', fig.height = 8, fig.cap = 'Estimated log-intensity surface, log-scale prediction standard errors, and relative standard error from models fit using all events in the full simulation region (left) and events in a subset of the simulation region (right). The regions and event locations are overlaid in white.'>>=
+par(mfrow = c(3, 2), mar = c(1, 0, 1.2, 2), las = 2, cex = 1)
 
-plot(log(hw4_pred_a$estimate), zlim = c(-4.5, 10.5),
+plot(log(hw4_pred_f$estimate), zlim = c(-4.5, 10.5),
      main = expression(log(hat(lambda)[f](italic(list(x,y))))))
-plot(simulate_win, add = TRUE, border = '#ffffff40')
+plot(simulate_win, add = TRUE, border = '#ffffff80')
 points(hw4, pch = '.', col = 'white')
 
-plot(log(hw4_pred_u$estimate), zlim = c(-4.5, 10.5),
+plot(log(hw4_pred_s$estimate), zlim = c(-4.5, 10.5),
      main = expression(log(hat(lambda)[s](italic(list(x,y))))))
-plot(observe_win, add = TRUE, border = '#ffffff40')
+plot(observe_win, add = TRUE, border = '#ffffff80')
 points(hw4[observe_win], pch = '.', col = 'white')
 
-plot(log(hw4_pred_a$se), zlim = c(-4.5, 10.5),
+plot(log(hw4_pred_f$se), zlim = c(-4.5, 10.5),
      main = expression(log(SE(hat(lambda)[f](italic(list(x,y)))))))
-plot(simulate_win, add = TRUE, border = '#ffffff40')
+plot(simulate_win, add = TRUE, border = '#ffffff80')
 points(hw4, pch = '.', col = 'white')
 
-plot(log(hw4_pred_u$se), zlim = c(-4.5, 10.5),
+plot(log(hw4_pred_s$se), zlim = c(-4.5, 10.5),
      main = expression(log(SE(hat(lambda)[s](italic(list(x,y)))))))
-plot(observe_win, add = TRUE, border = '#ffffff40')
+plot(observe_win, add = TRUE, border = '#ffffff80')
 points(hw4[observe_win], pch = '.', col = 'white')
 
-plot(hw4_pred_a$se/hw4_pred_a$estimate, zlim = c(0, 1),
+plot(hw4_pred_f$se/hw4_pred_f$estimate, zlim = c(0, 1),
      main = expression(SE(hat(lambda)[f](italic(list(x,y)))) /
                          hat(lambda)[f](italic(list(x,y)))))
-plot(simulate_win, add = TRUE, border = '#ffffff40')
+plot(simulate_win, add = TRUE, border = '#ffffff80')
 points(hw4, pch = '.', col = 'white')
 
-plot(hw4_pred_u$se/hw4_pred_u$estimate, zlim = c(0, 1),
+plot(hw4_pred_s$se/hw4_pred_s$estimate, zlim = c(0, 1),
      main = expression(SE(hat(lambda)[s](italic(list(x,y)))) /
                          hat(lambda)[s](italic(list(x,y)))))
-plot(observe_win, add = TRUE, border = '#ffffff40')
+plot(observe_win, add = TRUE, border = '#ffffff80')
 points(hw4[observe_win], pch = '.', col = 'white')
 @
+
+
+\subsection{Simple UXO Site}
 
 easy site, realization 2,000, 390 ft spacing
 
@@ -257,6 +330,17 @@ a kernel intensity estimate?
 
 smallish SEs outside observed region because of faith in the model form --
 need model checking
+
+What geostatisticians and ordnance engineers will notice is that that SEs
+don't reflect added uncertainty about unobserved regions.
+Note kriging accounts for lack of model fit by autocorrelated errors --
+prediction SEs increase far from obs because of lack of info about local
+deviations from mean. For Poisson process, the events are independent given
+the intensity so local variation is not helpful for prediction. Thus we are
+heavily reliant on the correctness of the model form and the
+representativeness of the observed subregion, so model checking is crucial.
+If there is prior uncertainty about the form of the trend in a certain part of
+the site, that region must be observed!
 
 how much of the region do you need to observe to trust your model?
 
