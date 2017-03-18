@@ -45,9 +45,10 @@ options(xtable.table.placement = 'H', width = 80, scipen = 2,
 @
 
 <<packages, message = FALSE, cache = FALSE>>=
+library(parallel)
 library(spatstat)
 
-set.seed(83534)
+set.seed(c(83534, 251, -18691, 283, -2526, 782), kind = 'L\'Ecuyer-CMRG')
 @
 
 
@@ -169,9 +170,18 @@ trend surface to one realization of the the site.
 
 \subsection{True Log-Linear Intensity Surface}
 
+<<hw4_sim>>=
+simulate_win <- owin(c(0, 1), c(0, 1))
+omit_win <- owin(c(0.6, 0.9), c(0.6, 0.9))
+observe_win <- setminus.owin(simulate_win, omit_win)
+predict_win <- owin(c(-0.5, 1.5), c(-0.5, 1.5))
+hw4 <- rpoispp(function(x, y){exp(5 * x + 2 * y)}, win = simulate_win)
+@
+
 Previously this semester, we worked with an example of a Poisson process on
-the unit square \(\{(x,y):0<x<1,0<y<1\}\) with the log-linear intensity
-surface
+the unit square \(\{(x,y):\Sexpr{min(simulate_win$xrange)} < x
+< \Sexpr{max(simulate_win$xrange)}, \Sexpr{min(simulate_win$yrange)} < y
+< \Sexpr{max(simulate_win$yrange)}\}\) with the log-linear intensity surface
 \begin{equation*}
 \log(\lambda(x,y)) = 5x + 2y.
 \end{equation*}
@@ -181,22 +191,17 @@ I will continue this example, fitting the model
 \end{equation*}
 first using the process observed over the full region (the entire unit
 square), and then using the process observed in a subregion treating
-\(\{(x,y):0.6<x<0.9,0.6<y<0.9\}\) as unobserved. This unobserved section is a
-region of relatively high intensity, so if the estimation or prediction
-methods are sensitive to the observation window I expect omitting this
-section to have a large effect.
+\(\{(x,y): \Sexpr{min(omit_win$xrange)} < x < \Sexpr{max(omit_win$xrange)},
+\Sexpr{min(omit_win$yrange)} < y < \Sexpr{max(omit_win$yrange)}\}\) as
+unobserved. This unobserved section is a region of relatively high intensity,
+so if the estimation or prediction methods are sensitive to the observation
+window I expect omitting this section to have a large effect.
 
 I will use both estimated models to predict on
-\(\{(x,y):-0.5<x<1.5,-0.5<y<1.5\}\). Figure~\ref{fig:hw4_plot} shows the
+\(\{(x,y): \Sexpr{min(predict_win$xrange)} < x
+< \Sexpr{max(predict_win$xrange)}, \Sexpr{min(predict_win$yrange)} < y
+< \Sexpr{max(predict_win$yrange)}\}\). Figure~\ref{fig:hw4_plot} shows the
 realization of this process that I will use for both model fits.
-
-<<hw4_sim>>=
-simulate_win <- owin(c(0, 1), c(0, 1))
-omit_win <- owin(c(0.6, 0.9), c(0.6, 0.9))
-observe_win <- setminus.owin(simulate_win, omit_win)
-predict_win <- owin(c(-0.5, 1.5), c(-0.5, 1.5))
-hw4 <- rpoispp(function(x, y){exp(5 * x + 2 * y)}, win = simulate_win)
-@
 
 <<hw4_plot, fig.pos = 'b!', fig.cap = 'One realization of a Poisson process with log-linear intensity on the unit square. The dashed square shows the outline of the ``unobserved" region; when fitting the model to the subregion, the points inside it will be discarded and it will not be considered in constructing the approximation to the likelihood.'>>=
 par(mar = c(0, 0, 1, 0))
@@ -223,8 +228,9 @@ estimates~(Tables~\ref{hw4estf} and \ref{hw4ests}).
 
 After estimating the models, I use \texttt{spatstat}'s \texttt{predict.ppm}
 method to predict the intensity surface on a \(128 \times 128\) lattice of
-locations in the region
-\(\{(x,y):-0.5<x<1.5,-0.5<y<1.5\}\)~(Figure~\ref{fig:hw4_fitplot}). As
+locations in the region \(\{(x,y): \Sexpr{min(predict_win$xrange)} < x
+< \Sexpr{max(predict_win$xrange)}, \Sexpr{min(predict_win$yrange)} < y
+< \Sexpr{max(predict_win$yrange)}\}\)~(Figure~\ref{fig:hw4_fitplot}). As
 expected from the similarity of the coefficient estimates, the predicted
 log-intensity surfaces for both models show very similar linear trends~(top
 row of the figure). At a glance the prediction standard errors for both
@@ -313,7 +319,57 @@ points(hw4[observe_win], pch = '.', col = 'white')
 
 \subsection{Simple UXO Site}
 
-easy site, realization 2,000, 390 ft spacing
+<<uxoexampledata>>=
+# Path to my writing project root directory.
+vspuxo <- file.path('..', '..', 'vspuxo')
+
+# Load my functions for working with UXO data.
+source(file.path(vspuxo, 'rfns', 'data_functions.r'))
+source(file.path(vspuxo, 'rfns', 'sampling_functions.r'))
+source(file.path(vspuxo, 'rfns', 'spatial_functions.r'))
+
+# Define the window for the UXO site.
+sitewindow <- owin(poly = cbind(x = c(1564294, 1564495, 1556870, 1557126),
+                                y = c(535421, 541130, 541085, 535576)))
+@
+
+In my writing project, I evaluated ordinary kriging of moving average
+intensity values on a simulated tank training range. I will use the same site
+for this project. The site is a
+\Sexpr{sprintf('%.1f', area(sitewindow) / 43560)} acre quadrilateral region
+with homogeneous Poisson process producing background anomalies with an
+intensity of 100 anomalies per acre, and two regions of concentrated munitions
+use generated as Poisson processes with bivariate Gaussian intensity. The
+total intesnsity at the center of each concentrated munitions use region is
+300 anomalies per acre~(Figure~\ref{fig:truth}).
+
+<<truth, cache = TRUE, fig.width = 3.75, fig.pos = 't', fig.cap = 'True intensity at the simulated UXO site.'>>=
+x <- seq(1556870, 1564495, by = 20)
+y <- seq(535421, 541130, by = 20)
+intense.mat <- matrix(100, nrow = length(x), length(y))
+for(i in seq_along(x)){
+  for(j in seq_along(y)){
+    intense.mat[i, j] <- 100 + gauss.elliptic(x[i]+10, y[j]+10,
+        mu.x = 1558400, mu.y = 540000,
+        s.a = 800/(2*qnorm(0.995)), s.b = 1200/(2*qnorm(0.995)),
+        r = pi/6, maxrate = 200
+      ) + gauss.elliptic(x[i]+10, y[j]+10,
+        mu.x = 1562000, mu.y = 537000,
+        s.a = 2000/(2*qnorm(0.995)), s.b = 900/(2*qnorm(0.995)),
+        r = 0, maxrate = 200
+      )
+  }
+}
+intense.im <- im(t(intense.mat), x+10, y+10, unitname = c('foot', 'feet'))
+
+par(mar = c(0, 0, 1, 3))
+plot(intense.im, main = 'True Intensity Surface', zlim = c(100, 300), las = 2)
+plot(setminus.owin(owin(c(1556870, 1564495), c(535421, 541130)),
+                   sitewindow), col = 'white', add = TRUE)
+mtext('Anomalies per Acre', 4, line = 2)
+@
+
+easy site, realization 2,000, 390 ft spacing, 6 ft width
 
 use \texttt{polynom()} not \texttt{poly()}!
 
