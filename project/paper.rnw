@@ -369,7 +369,22 @@ plot(setminus.owin(owin(c(1556870, 1564495), c(535421, 541130)),
 mtext('Anomalies per Acre', 4, line = 2)
 @
 
-easy site, realization 2,000, 390 ft spacing, 6 ft width
+I simulate data collection along parallel straight-line transects spaced 390
+feet apart using a detector with a footprint six feet wide. The location of
+the first transect was selected randomly, and all anomalies within three feet
+of a transect are observed~(Figure~\ref{fig:sim2000obs}).
+
+<<sim2000obs>>=
+# Load the sample data used in my writing project.
+ex_anom <- read.anomaly(file.path(vspuxo, 'datasets', 'easy', 'sample',
+                        'easy_sample_tTA2_p100_bg100_fg200_rep2000.anomaly'))
+ex_path <- read.anomaly(file.path(vspuxo, 'datasets', 'easy', 'sample',
+                        'easy_sample_tTA2_p100_bg100_fg200_rep2000.cog'))
+
+par(mar = c(0, 0, 1, 0))
+plot(sitewindow, main = 'Observed Geomagnetic Anomalies')
+points(y ~ x, data = ex_anom, pch = '.')
+@
 
 use \texttt{polynom()} not \texttt{poly()}!
 
