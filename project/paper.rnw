@@ -157,7 +157,7 @@ better reflects the experience of a na\"{i}ve practitioner who is not an
 expert on spatial point processes.
 
 
-\section{Examples}
+%\section{Examples}
 
 To illustrate model fitting and prediction, I present two examples before
 proceeding to the simulation study. The first is a toy example where I
@@ -167,7 +167,7 @@ introduces the my UXO site and provides a case study of fitting a polynomial
 trend surface to one realization of the the site.
 
 
-\subsection{True Log-Linear Intensity Surface}
+\section{True Log-Linear Intensity Surface}
 
 <<hw4_sim>>=
 simulate_win <- owin(c(0, 1), c(0, 1))
@@ -316,7 +316,7 @@ points(hw4[observe_win], pch = '.', col = 'white')
 @
 
 
-\subsection{Simple UXO Site}
+\section{Simple UXO Site}
 
 <<uxoexampledata>>=
 # Path to my writing project root directory.
@@ -368,7 +368,8 @@ intense.im <- im(t(intense.mat), x, y, unitname = c('foot', 'feet'))
 par(mar = c(0, 0, 1, 3))
 plot(intense.im, main = 'True Intensity Surface',
      border = NA, zlim = c(100, 300), las = 2)
-plot(setminus.owin(owin(c(1556870, 1564495), c(535421, 541130)),
+plot(setminus.owin(owin(c(1556870, 1564495),
+                        c(535421, 541130)),
      site_window), col = 'white', border = 'white', lwd = 2, add = TRUE)
 mtext('Anomalies per Acre', 4, line = 2)
 @
@@ -406,17 +407,45 @@ qegion of interest.
 
 use \texttt{polynom()} not \texttt{poly()}!
 
-<<polyfit1, eval = FALSE>>=
-ex_fit4 <- ppm(ex_ppp ~ polynom(x, y, 4))
+<<polyfit1, warning = FALSE, fig.height = 8, fig.pos = 'p', fig.cap = ''>>=
+# Create a quadrature scheme manually to ensure there are dummy points on
+# each transect.
+# TODO: Figure out weights.
+ex_Q <- quad(data = ex_ppp,
+             dummy = as.ppp(rbind(
+               data.frame(vertices(Window(ex_ppp))),
+               do.call(rbind, lapply(unique(ex_path$x), function(x){
+                 return(data.frame(
+                   x = x, y = seq(min(ex_path$y), max(ex_path$y),
+                                  length.out = 128)
+                 ))}))), W = Window(ex_ppp)))
+
+ex_fit2 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 2), correction = 'iso')
+ex_fit3 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 3), correction = 'iso')
+ex_fit4 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 4), correction = 'iso')
+ex_fit5 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 5), correction = 'iso')
+ex_fit6 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 6), correction = 'iso')
+ex_fit7 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 7), correction = 'iso')
+ex_fit8 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 8), correction = 'iso')
+ex_fit9 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 9), correction = 'iso')
+ex_fit10 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 10), correction = 'iso')
+ex_fit11 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 11), correction = 'iso')
+ex_fit12 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 12), correction = 'iso')
+
+par(mfrow = c(4, 3), mar = c(1, 0, 1.2, 2), las = 2, cex = 1)
+plot(predict(ex_fit2, window = site_window), main = '2nd Degree')
+plot(predict(ex_fit3, window = site_window), main = '3rd Degree')
+plot(predict(ex_fit4, window = site_window), main = '4th Degree')
+plot(predict(ex_fit5, window = site_window), main = '5th Degree')
+plot(predict(ex_fit6, window = site_window), main = '6th Degree')
+plot(predict(ex_fit7, window = site_window), main = '7th Degree')
+plot(predict(ex_fit8, window = site_window), main = '8th Degree')
+plot(predict(ex_fit9, window = site_window), main = '9th Degree')
+plot(predict(ex_fit10, window = site_window), main = '10th Degree')
+plot(predict(ex_fit11, window = site_window), main = '11th Degree')
+plot(predict(ex_fit12, window = site_window), main = '12th Degree')
+# TODO: Kernel density plot.
 @
-
-
-\section{Simulation Study}
-
-What to compare? MSPE for this method vs the moving average kriging? I'd
-like to cross-validate (could leave one transect out) but I don't know how to
-contruct a criterion. Maybe compare modeled intensity within the rectangle to
-a kernel intensity estimate?
 
 
 \section{Discussion and Conclusion}
