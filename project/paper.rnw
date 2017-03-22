@@ -416,7 +416,7 @@ qegion of interest.
 
 use \texttt{polynom()} not \texttt{poly()}!
 
-<<polyfit1, warning = FALSE, fig.width = 6, fig.height = 8, fig.pos = 'p', fig.cap = ''>>=
+<<polyfit1, cache = TRUE, warning = FALSE, fig.width = 6, fig.height = 8, fig.pos = 'p', fig.cap = ''>>=
 # Create a quadrature scheme manually to ensure there are dummy points on
 # each transect.
 # TODO: Figure out weights.
@@ -465,21 +465,51 @@ ex_fit12 <- ppm(ex_Q, ~ polynom(scale(x, center = 1556870, scale = 7625),
 
 par(mfrow = c(4, 3), mar = c(1, 0, 1.2, 3), las = 2, cex = 1)
 
+# Get predictions and SEs.
+ex_p2 <- predict(ex_fit2, window = site_window, se = TRUE)
+ex_p3 <- predict(ex_fit3, window = site_window, se = TRUE)
+ex_p4 <- predict(ex_fit4, window = site_window, se = TRUE)
+ex_p5 <- predict(ex_fit5, window = site_window, se = TRUE)
+ex_p6 <- predict(ex_fit6, window = site_window, se = TRUE)
+ex_p7 <- predict(ex_fit7, window = site_window, se = TRUE)
+ex_p8 <- predict(ex_fit8, window = site_window, se = TRUE)
+ex_p9 <- predict(ex_fit9, window = site_window, se = TRUE)
+ex_p10 <- predict(ex_fit10, window = site_window)
+ex_p11 <- predict(ex_fit11, window = site_window)
+ex_p12 <- predict(ex_fit12, window = site_window)
+
 # Multiply predictions by 43560 to convert from anomalies per square foot
 # to anomalies per acre.
-plot(43560 * predict(ex_fit2, window = site_window), main = '2nd Degree')
-plot(43560 * predict(ex_fit3, window = site_window), main = '3rd Degree')
-plot(43560 * predict(ex_fit4, window = site_window), main = '4th Degree')
-plot(43560 * predict(ex_fit5, window = site_window), main = '5th Degree')
-plot(43560 * predict(ex_fit6, window = site_window), main = '6th Degree')
-plot(43560 * predict(ex_fit7, window = site_window), main = '7th Degree')
-plot(43560 * predict(ex_fit8, window = site_window), main = '8th Degree')
-plot(43560 * predict(ex_fit9, window = site_window), main = '9th Degree')
-plot(43560 * predict(ex_fit10, window = site_window), main = '10th Degree')
-plot(43560 * predict(ex_fit11, window = site_window), main = '11th Degree')
-plot(43560 * predict(ex_fit12, window = site_window), main = '12th Degree')
+plot(43560 * ex_p2$estimate, main = '2nd Degree')
+plot(43560 * ex_p3$estimate, main = '3rd Degree')
+plot(43560 * ex_p4$estimate, main = '4th Degree')
+plot(43560 * ex_p5$estimate, main = '5th Degree')
+plot(43560 * ex_p6$estimate, main = '6th Degree')
+plot(43560 * ex_p7$estimate, main = '7th Degree')
+plot(43560 * ex_p8$estimate, main = '8th Degree')
+plot(43560 * ex_p9$estimate, main = '9th Degree')
+plot(43560 * ex_p10, main = '10th Degree')
+plot(43560 * ex_p11, main = '11th Degree')
+plot(43560 * ex_p12, main = '12th Degree')
 plot(43560 * density(ex_ppp_full) * area(ex_ppp_full) / ex_ppp_full$n,
      main = 'Kernel Density')
+@
+
+<<polyse1, fig.width = 6, fig.height = 8, fig.pos = 'p', fig.cap = ''>>=
+par(mfrow = c(4, 3), mar = c(1, 0, 2, 3), las = 2, cex = 1)
+plot(log(43560 * ex_p2$se), main = '2nd Degree\nlog(SE)', zlim = c(6.5, 10.5))
+plot(log(43560 * ex_p3$se), main = '3rd Degree\nlog(SE)', zlim = c(6.5, 10.5))
+plot(log(43560 * ex_p4$se), main = '4th Degree\nlog(SE)', zlim = c(6.5, 10.5))
+plot(ex_p2$se / ex_p2$estimate, main = '2nd Degree\nRSE', zlim = c(0, 2))
+plot(ex_p3$se / ex_p3$estimate, main = '3rd Degree\nRSE', zlim = c(0, 2))
+plot(ex_p4$se / ex_p4$estimate, main = '4th Degree\nRSE', zlim = c(0, 2))
+
+plot(log(43560 * ex_p6$se), main = '6th Degree\nlog(SE)', zlim = c(6.5, 10.5))
+plot(log(43560 * ex_p8$se), main = '8th Degree\nlog(SE)', zlim = c(6.5, 10.5))
+plot(log(43560 * ex_p9$se), main = '9th Degree\nlog(SE)', zlim = c(6.5, 10.5))
+plot(ex_p6$se / ex_p6$estimate, main = '6th Degree\nRSE', zlim = c(0, 2))
+plot(ex_p8$se / ex_p8$estimate, main = '8th Degree\nRSE', zlim = c(0, 2))
+plot(ex_p9$se / ex_p9$estimate, main = '9th Degree\nRSE', zlim = c(0, 2))
 @
 
 \texttt{plot} doesn't work, and \texttt{predict} doesn't work on the original

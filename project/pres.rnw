@@ -293,6 +293,15 @@ points(hw4[observe_win], pch = '.', col = 'white')
 site_window <- owin(poly = cbind(x = c(1564294, 1564495, 1556870, 1557126),
                                  y = c(535421, 541130, 541085, 535576)),
                     unitname = c('foot', 'feet'))
+ex_anom <- read.csv('easy_sample_tTA2_p200_bg100_fg200_rep2000.anomaly')
+ex_path <- read.csv('easy_sample_tTA2_p200_bg100_fg200_rep2000.cog')
+ex_win <- intersect.owin(site_window,
+  do.call(union.owin, lapply(unique(ex_path$x), function(x){
+    return(owin(c(x - 3, x + 3), c(535421, 541130),
+           unitname = c('foot', 'feet')))
+  })))
+ex_ppp <- ppp(ex_anom$x, ex_anom$y, window = ex_win)
+ex_ppp_full <- ppp(ex_anom$x, ex_anom$y, window = site_window)
 @
 
 \begin{itemize}
@@ -346,6 +355,87 @@ plot(setminus.owin(owin(c(1556870, 1564495), c(535421, 541130),
      site_window), col = 'white', border = 'white', lwd = 2, add = TRUE)
 mtext('Anomalies per Acre', 4, line = -1)
 @
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Observed Events}
+
+\begin{itemize}
+
+\item Metal detectors record anomalies in six foot wide strips along parallel
+transects with 396 feet between centerlines
+
+\item Observed \Sexpr{sprintf('%.1f', area(ex_win) / 43560)} acres,
+\Sexpr{sprintf('%.1f\\%%', 100 * area(ex_win) / area(site_window))}
+of the site
+
+\end{itemize}
+
+<<sim2000obs>>=
+par(mar = c(0, 0, 1, 0))
+plot(ex_ppp, main = 'Observed Geomagnetic Anomalies', pch = '.', border = NA)
+plot(site_window, add = TRUE)
+@
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Models}
+
+\begin{itemize}
+
+\item Polynomial models
+\(\displaystyle\log(\lambda(x,y))
+= \sum_{i=0}^{p}\sum_{j=0}^{p-i}\beta_{ij}x^{i}y^{j}\)
+for \(p = 2, 3, \dots, 12\)
+
+\end{itemize}
+
+<<dummy, warning = FALSE>>=
+ex_fit1 <- ppm(ex_ppp_full ~ x + y)
+ex_Q <- quad(data = ex_ppp,
+             dummy = as.ppp(rbind(
+               data.frame(vertices(Window(ex_ppp))),
+               do.call(rbind, lapply(unique(ex_path$x), function(x){
+                 return(data.frame(
+                   x = x, y = seq(min(ex_path$y), max(ex_path$y),
+                                  length.out = 128)
+                 ))}))), W = Window(ex_ppp)))
+
+par(mfrow = c(1, 2), mar = c(0, 0, 1, 0), cex = 1)
+plot(ex_fit1$Q$dummy, pch = '.', border = NA,
+     main = 'Default Dummy Points')
+plot(site_window, add = TRUE)
+plot(ex_Q$dummy, pch = '.', border = NA,
+     main = 'Manual Dummy Points')
+plot(site_window, add = TRUE)
+@
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Problems with Implementation}
+
+\begin{itemize}
+
+\item Needed to rescale coordinates
+
+\item For \(p \geq 10\), \texttt{pmm} cannot compute SEs because the
+``Fisher information matrix is singular''
+
+\item The \texttt{plot} method gives an error about infinite values
+
+\item When the window isn't specified, the \texttt{predict} method's default
+grid misses all but two transects
+
+\item The predict method does not work with spline smoothers
+
+\item The magnitudes of the predictions are much to large
+
+\end{itemize}
 
 \end{frame}
 
