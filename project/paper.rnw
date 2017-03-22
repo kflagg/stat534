@@ -157,7 +157,7 @@ better reflects the experience of a na\"{i}ve practitioner who is not an
 expert on spatial point processes.
 
 
-%\section{Examples}
+\section{Examples}
 
 To illustrate model fitting and prediction, I present two examples before
 proceeding to the simulation study. The first is a toy example where I
@@ -316,20 +316,13 @@ points(hw4[observe_win], pch = '.', col = 'white')
 @
 
 
-\section{Simple UXO Site}
+\section{Simulated UXO Site}
 
 <<uxoexampledata>>=
-# Path to my writing project root directory.
-vspuxo <- file.path('..', '..', 'vspuxo')
-
-# Load my functions for working with UXO data.
-source(file.path(vspuxo, 'rfns', 'data_functions.r'))
-source(file.path(vspuxo, 'rfns', 'sampling_functions.r'))
-source(file.path(vspuxo, 'rfns', 'spatial_functions.r'))
-
 # Define the window for the UXO site.
 site_window <- owin(poly = cbind(x = c(1564294, 1564495, 1556870, 1557126),
-                                 y = c(535421, 541130, 541085, 535576)))
+                                 y = c(535421, 541130, 541085, 535576)),
+                    unitname = c('foot', 'feet'))
 @
 
 In my writing project, I evaluated ordinary kriging of moving average
@@ -343,10 +336,24 @@ total intesnsity at the center of each concentrated munitions use region is
 300 anomalies per acre~(Figure~\ref{fig:truth}).
 
 <<truth, cache = TRUE, fig.width = 4, fig.pos = 't', fig.cap = 'True intensity at the simulated UXO site.'>>=
+# Bivariate normal intensity function that I originalally wrote for my
+# writing project, parameterized in terms of the major and minor axes scales
+# and the angle of the major axis from horizontal.
+#   a is horizontal axis, b is vertical axis, r is rotation angle
+gauss.elliptic <- function(x, y, mu.x = 0, mu.y = 0, s.a = 1, s.b = 1,
+                           r = 0, maxrate = 1){
+  rot <- zapsmall(matrix(c(cos(r), sin(r), -sin(r), cos(r)), nrow = 2))
+  ab <- diag(c(s.a^2, s.b^2))
+  sigma <- rot %*% ab %*% t(rot)
+  siginv <- solve(sigma)
+  mu <- matrix(c(mu.x, mu.y), nrow = 2)
+  mat <- matrix(rbind(x, y), nrow = 2)
+  return(maxrate * apply(mat, 2, function(vec){
+      exp(-t(vec - mu) %*% siginv %*% (vec - mu) / 2)
+    }))
+}
+
 # Create an image of the surface in 20 ft by 20 ft pixels.
-# The gauss.elliptic function from spatial_functions.r is a bivariate normal
-# intensity parameterized in terms of the center, major and minor axis scales,
-# and angle of the major axis.
 x <- seq(1556880, 1564495, by = 20)
 y <- seq(535431, 541130, by = 20)
 intense.mat <- matrix(100, nrow = length(x), length(y))
@@ -368,8 +375,8 @@ intense.im <- im(t(intense.mat), x, y, unitname = c('foot', 'feet'))
 par(mar = c(0, 0, 1, 3))
 plot(intense.im, main = 'True Intensity Surface',
      border = NA, zlim = c(100, 300), las = 2)
-plot(setminus.owin(owin(c(1556870, 1564495),
-                        c(535421, 541130)),
+plot(setminus.owin(owin(c(1556870, 1564495), c(535421, 541130),
+                        unitname = c('foot', 'feet')),
      site_window), col = 'white', border = 'white', lwd = 2, add = TRUE)
 mtext('Anomalies per Acre', 4, line = 2)
 @
@@ -378,17 +385,19 @@ mtext('Anomalies per Acre', 4, line = 2)
 # Load the sample data used in my writing project.
 # The anomaly file contains the locations of the observed anamolies and the
 # cog file contains the course-over-ground waypoints on the transects.
-ex_anom <- read.csv(file.path(vspuxo, 'datasets', 'easy', 'sample',
-                    'easy_sample_tTA2_p200_bg100_fg200_rep2000.anomaly'))
-ex_path <- read.csv(file.path(vspuxo, 'datasets', 'easy', 'sample',
-                    'easy_sample_tTA2_p200_bg100_fg200_rep2000.cog'))
+ex_anom <- read.csv('easy_sample_tTA2_p200_bg100_fg200_rep2000.anomaly')
+ex_path <- read.csv('easy_sample_tTA2_p200_bg100_fg200_rep2000.cog')
 
 # Create a spatstat window and ppp object.
 ex_win <- intersect.owin(site_window,
   do.call(union.owin, lapply(unique(ex_path$x), function(x){
-    return(owin(c(x - 3, x + 3), c(535421, 541130)))
+    return(owin(c(x - 3, x + 3), c(535421, 541130),
+           unitname = c('foot', 'feet')))
   })))
 ex_ppp <- ppp(ex_anom$x, ex_anom$y, window = ex_win)
+
+# Create a ppp object the uses the full region as the window.
+ex_ppp_full <- ppp(ex_anom$x, ex_anom$y, window = site_window)
 
 par(mar = c(0, 0, 1, 0))
 plot(ex_ppp, main = 'Observed Geomagnetic Anomalies', pch = '.', border = NA)
@@ -407,7 +416,7 @@ qegion of interest.
 
 use \texttt{polynom()} not \texttt{poly()}!
 
-<<polyfit1, warning = FALSE, fig.height = 8, fig.pos = 'p', fig.cap = ''>>=
+<<polyfit1, warning = FALSE, fig.width = 6, fig.height = 8, fig.pos = 'p', fig.cap = ''>>=
 # Create a quadrature scheme manually to ensure there are dummy points on
 # each transect.
 # TODO: Figure out weights.
@@ -420,32 +429,61 @@ ex_Q <- quad(data = ex_ppp,
                                   length.out = 128)
                  ))}))), W = Window(ex_ppp)))
 
-ex_fit2 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 2), correction = 'iso')
-ex_fit3 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 3), correction = 'iso')
-ex_fit4 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 4), correction = 'iso')
-ex_fit5 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 5), correction = 'iso')
-ex_fit6 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 6), correction = 'iso')
-ex_fit7 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 7), correction = 'iso')
-ex_fit8 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 8), correction = 'iso')
-ex_fit9 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 9), correction = 'iso')
-ex_fit10 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 10), correction = 'iso')
-ex_fit11 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 11), correction = 'iso')
-ex_fit12 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 12), correction = 'iso')
+ex_fit2 <- ppm(ex_Q, ~ polynom(scale(x, center = 1556870, scale = 7625),
+                               scale(y, center = 535421, scale = 5709),
+                                     2), correction = 'iso')
+ex_fit3 <- ppm(ex_Q, ~ polynom(scale(x, center = 1556870, scale = 7625),
+                               scale(y, center = 535421, scale = 5709),
+                                     3), correction = 'iso')
+ex_fit4 <- ppm(ex_Q, ~ polynom(scale(x, center = 1556870, scale = 7625),
+                               scale(y, center = 535421, scale = 5709),
+                                     4), correction = 'iso')
+ex_fit5 <- ppm(ex_Q, ~ polynom(scale(x, center = 1556870, scale = 7625),
+                               scale(y, center = 535421, scale = 5709),
+                                     5), correction = 'iso')
+ex_fit6 <- ppm(ex_Q, ~ polynom(scale(x, center = 1556870, scale = 7625),
+                               scale(y, center = 535421, scale = 5709),
+                                     6), correction = 'iso')
+ex_fit7 <- ppm(ex_Q, ~ polynom(scale(x, center = 1556870, scale = 7625),
+                               scale(y, center = 535421, scale = 5709),
+                                     7), correction = 'iso')
+ex_fit8 <- ppm(ex_Q, ~ polynom(scale(x, center = 1556870, scale = 7625),
+                               scale(y, center = 535421, scale = 5709),
+                                     8), correction = 'iso')
+ex_fit9 <- ppm(ex_Q, ~ polynom(scale(x, center = 1556870, scale = 7625),
+                               scale(y, center = 535421, scale = 5709),
+                                     9), correction = 'iso')
+ex_fit10 <- ppm(ex_Q, ~ polynom(scale(x, center = 1556870, scale = 7625),
+                                scale(y, center = 535421, scale = 5709),
+                                      10), correction = 'iso')
+ex_fit11 <- ppm(ex_Q, ~ polynom(scale(x, center = 1556870, scale = 7625),
+                                scale(y, center = 535421, scale = 5709),
+                                      11), correction = 'iso')
+ex_fit12 <- ppm(ex_Q, ~ polynom(scale(x, center = 1556870, scale = 7625),
+                                scale(y, center = 535421, scale = 5709),
+                                      12), correction = 'iso')
 
-par(mfrow = c(4, 3), mar = c(1, 0, 1.2, 2), las = 2, cex = 1)
-plot(predict(ex_fit2, window = site_window), main = '2nd Degree')
-plot(predict(ex_fit3, window = site_window), main = '3rd Degree')
-plot(predict(ex_fit4, window = site_window), main = '4th Degree')
-plot(predict(ex_fit5, window = site_window), main = '5th Degree')
-plot(predict(ex_fit6, window = site_window), main = '6th Degree')
-plot(predict(ex_fit7, window = site_window), main = '7th Degree')
-plot(predict(ex_fit8, window = site_window), main = '8th Degree')
-plot(predict(ex_fit9, window = site_window), main = '9th Degree')
-plot(predict(ex_fit10, window = site_window), main = '10th Degree')
-plot(predict(ex_fit11, window = site_window), main = '11th Degree')
-plot(predict(ex_fit12, window = site_window), main = '12th Degree')
-# TODO: Kernel density plot.
+par(mfrow = c(4, 3), mar = c(1, 0, 1.2, 3), las = 2, cex = 1)
+
+# Multiply predictions by 43560 to convert from anomalies per square foot
+# to anomalies per acre.
+plot(43560 * predict(ex_fit2, window = site_window), main = '2nd Degree')
+plot(43560 * predict(ex_fit3, window = site_window), main = '3rd Degree')
+plot(43560 * predict(ex_fit4, window = site_window), main = '4th Degree')
+plot(43560 * predict(ex_fit5, window = site_window), main = '5th Degree')
+plot(43560 * predict(ex_fit6, window = site_window), main = '6th Degree')
+plot(43560 * predict(ex_fit7, window = site_window), main = '7th Degree')
+plot(43560 * predict(ex_fit8, window = site_window), main = '8th Degree')
+plot(43560 * predict(ex_fit9, window = site_window), main = '9th Degree')
+plot(43560 * predict(ex_fit10, window = site_window), main = '10th Degree')
+plot(43560 * predict(ex_fit11, window = site_window), main = '11th Degree')
+plot(43560 * predict(ex_fit12, window = site_window), main = '12th Degree')
+plot(43560 * density(ex_ppp_full) * area(ex_ppp_full) / ex_ppp_full$n,
+     main = 'Kernel Density')
 @
+
+\texttt{plot} doesn't work, and \texttt{predict} doesn't work on the original
+window. \texttt{predict} can't compute SEs.
 
 
 \section{Discussion and Conclusion}

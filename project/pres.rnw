@@ -1,0 +1,361 @@
+\documentclass[unknownkeysallowed]{beamer}
+\usepackage{graphicx,epsfig,hyperref,booktabs,lmodern}
+
+\usepackage[backend=bibtex,style=authoryear,citestyle=authoryear-comp]{biblatex}
+\addbibresource{references.bib}
+
+\beamertemplatenavigationsymbolsempty
+
+\mode<presentation>
+{
+  \usetheme{bunsen}
+  \setbeamercovered{transparent}
+  \setbeamertemplate{items}[circle]
+}
+
+% set fonts
+%\usepackage{fontspec}
+%\setsansfont{Fontin Sans}
+%\setbeamerfont{frametitle}{size=\LARGE,series=\bfseries}
+
+% color definitions
+\usepackage{color}
+\definecolor{uipoppy}{RGB}{225, 64, 5}
+\definecolor{uipaleblue}{RGB}{96,123,139}
+\definecolor{uiblack}{RGB}{0, 0, 0}
+
+% title slide definition
+\title{Stat 534 Project: \\
+Extrapolation from Poisson Process Intensity Surface Models}
+\author{Kenny Flagg}
+\institute[MSU]{Department of Mathematical Sciences \\
+Montana State University}
+\date{March 24, 2017}
+
+\begin{document}
+
+<<setup, echo = FALSE, message = FALSE, cache = FALSE>>=
+library(knitr)
+opts_chunk$set(echo = FALSE, comment = NA, message = FALSE,
+               fig.path = 'pres_figure/', cache.path = 'pres_cache/',
+               show.signif.stars = FALSE,
+               fig.align = 'center', fig.width = 6.5, fig.height = 2.5,
+               fig.pos = 'H', size = 'footnotesize', dev = 'pdf',
+               dev.args = list(pointsize = 10))
+knit_theme$set('print')
+
+library(xtable)
+options(xtable.table.placement = 'H', width = 80, scipen = 2,
+        xtable.sanitize.rownames.function = function(x){return(x)},
+        show.signif.stars = FALSE)
+@
+
+<<packages, message = FALSE, cache = FALSE>>=
+library(spatstat)
+
+set.seed(83534)
+@
+
+\setbeamertemplate{background}
+{\includegraphics[width=\paperwidth,height=\paperheight]{beamer_title_page1}}
+\setbeamertemplate{footline}[default]
+
+\begin{frame}
+	\vspace*{.5cm}
+	\begin{center}
+		\textcolor{white}{\huge Stat 534 Project: \\
+Extrapolation from Poisson Process Intensity Surface Models \\}
+		\vspace{.5cm}
+		\textcolor{white}{\Large Kenny Flagg}\\
+	\end{center}
+\end{frame}
+
+% Set the background for the rest of the slides.
+% Insert infoline
+\setbeamertemplate{background}
+ {\includegraphics[width=\paperwidth,height=\paperheight]{msubg2}}
+%\setbeamertemplate{footline}[bunsentheme]
+
+
+\begin{frame}
+\frametitle{Introduction}
+
+\begin{itemize}
+
+\item Goals
+
+\begin{itemize}
+
+\item Estimate inhomogeneous intensity surface from events in a subregion
+
+\item Infer intensity across entire region
+
+\end{itemize}
+
+\item Applications
+
+\begin{itemize}
+
+\item Mapping where endangered species are located
+
+\item Mapping geomegnetic anomalies prior to an unexploded ordnace (UXO)
+remediation
+
+\end{itemize}
+
+\end{itemize}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Maximum Likelihood Intensity Surface Fitting}
+
+\begin{itemize}
+
+\item General point processes
+
+\begin{itemize}
+
+\item The theory is not too complicated but the computation is very difficult
+
+\end{itemize}
+
+\item Poisson processes
+
+\begin{itemize}
+
+\item Doable with numerical methods
+
+\item Log-likelihood of Poisson with intensity \(\lambda(\mathbf{s})\) on
+region \(D\) (note typos in \textcite{digglebook})
+\begin{align*}
+\ell(\lambda) &= \left\{-\mu + n\log(\mu) - \log(n!)\right\}
++ \sum_{i=1}^{n}\left\{\log\left(\lambda(\mathbf{s}_{i})\right)
+- \log(\mu)\right\} \\
+&= \sum_{i=1}^{n}\log\left(\lambda(\mathbf{s}_{i})\right)
+-\int_{D}\lambda(\mathbf{s})d\mathbf{s} - \log(n!).
+\end{align*}
+where \(\mu=\int_{D}\lambda(\mathbf{s})d\mathbf{s}\)
+\end{itemize}
+
+\end{itemize}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Poisson Process Log-Linear Model}
+
+\begin{itemize}
+
+\item Assuming events are independent (conditional on the intensity function),
+\begin{equation*}
+\log(\lambda(\mathbf{s})) = \mathbf{x}(\mathbf{s})^{T}\boldsymbol{\beta}
+\end{equation*}
+where \(\mathbf{x}(\mathbf{s})^{T}\) is a row of predictors at location
+\(\mathbf{s}\)
+
+\item Predictors can include covariates, but they must be known across the
+whole region
+
+\item \textcite{bermanturner} use dummy points and quadrature to set up an
+approximation as a weighted Poisson regression
+
+\item Their method is implemented in \texttt{spatstat}'s \texttt{ppm}, with
+\texttt{glm} from base R or \texttt{gam} from \texttt{mgcv} as the back-end
+
+\end{itemize}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Simple Example}
+
+<<hw4_sim>>=
+simulate_win <- owin(c(0, 1), c(0, 1))
+omit_win <- owin(c(0.6, 0.9), c(0.6, 0.9))
+observe_win <- setminus.owin(simulate_win, omit_win)
+predict_win <- owin(c(-0.5, 1.5), c(-0.5, 1.5))
+hw4 <- rpoispp(function(x, y){exp(5 * x + 2 * y)}, win = simulate_win)
+hw4_fit_s <- ppm(hw4[observe_win] ~ x + y, correction = 'isotropic')
+hw4_pred_s <- predict(hw4_fit_s, window = predict_win, se = TRUE)
+@
+
+\begin{itemize}
+
+\item True model
+
+\begin{itemize}
+
+\item Poisson process on the unit square
+
+\item \(\displaystyle \log(\lambda(x,y)) = 5x + 2y\)
+
+\end{itemize}
+
+\item But we don't observe
+\(\Sexpr{min(omit_win$xrange)} < x < \Sexpr{max(omit_win$xrange)},
+\Sexpr{min(omit_win$yrange)} < y < \Sexpr{max(omit_win$yrange)}\)
+
+\end{itemize}
+
+<<hw4_plot>>=
+par(mar = c(0, 0, 1, 0))
+plot(hw4, main = 'Event Locations')
+plot(omit_win, lty = 2, add = TRUE)
+@
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Estimated Model}
+
+\begin{itemize}
+
+\item Fit the model
+\(\displaystyle \log(\lambda(x,y)) = \beta_{0} + \beta_{1}x + \beta_{2}y\)
+
+\end{itemize}
+
+\begin{minipage}{0.5\textwidth}
+<<hw4_fitcoefs_s, results = 'asis'>>=
+hw4_coef_s <- summary(hw4_fit_s)$coefs.SE.CI[,c('Estimate', 'S.E.')]
+rownames(hw4_coef_s) <- c('\\(\\widehat{\\beta}_{0}\\)',
+                          '\\(\\widehat{\\beta}_{1}\\)',
+                          '\\(\\widehat{\\beta}_{2}\\)')
+xtable(hw4_coef_s)
+@
+\end{minipage}\begin{minipage}{0.5\textwidth}
+<<hw4_dummy_s, fig.width = 3.25>>=
+par(mar = c(0, 0, 1, 0))
+plot(hw4_fit_s$Q, main = 'Data and Dummy Points')
+@
+\end{minipage}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Extrapolate the Surface}
+
+\begin{itemize}
+
+\item Use the \texttt{predict} method
+
+\item Specify a new window
+\(\Sexpr{min(predict_win$xrange)} < x < \Sexpr{max(predict_win$xrange)},
+\Sexpr{min(predict_win$yrange)} < y < \Sexpr{max(predict_win$yrange)}\)
+
+\end{itemize}
+
+<<hw4_resultplot>>=
+par(mfrow = c(1, 2), mar = c(0, 0, 3, 0), cex = 1, las = 2)
+plot(log(hw4_pred_s$estimate), zlim = c(-4.5, 10.5),
+     main = expression(log(hat(lambda)(italic(list(x,y))))))
+plot(observe_win, add = TRUE, border = '#ffffff80')
+points(hw4[observe_win], pch = '.', col = 'white')
+plot(log(hw4_pred_s$se), zlim = c(-4.5, 10.5),
+     main = expression(log(SE(hat(lambda)(italic(list(x,y)))))))
+plot(observe_win, add = TRUE, border = '#ffffff80')
+points(hw4[observe_win], pch = '.', col = 'white')
+@
+\end{frame}
+
+\begin{frame}
+\frametitle{Where is the Uncertainty?}
+
+\begin{itemize}
+
+\item Relative standard error is lowest where the highest intensity was
+observed
+
+\end{itemize}
+
+<<hw4_rse>>=
+par(mar = c(0, 0, 1.5, 0), las = 2)
+plot(hw4_pred_s$se/hw4_pred_s$estimate, zlim = c(0, 1),
+     main = expression(SE(hat(lambda)(italic(list(x,y)))) /
+                         hat(lambda)(italic(list(x,y)))))
+plot(observe_win, add = TRUE, border = '#ffffff80')
+points(hw4[observe_win], pch = '.', col = 'white')
+@
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Simple UXO Site}
+
+<<uxoexampledata>>=
+# Define the window for the UXO site.
+site_window <- owin(poly = cbind(x = c(1564294, 1564495, 1556870, 1557126),
+                                 y = c(535421, 541130, 541085, 535576)),
+                    unitname = c('foot', 'feet'))
+@
+
+\begin{itemize}
+
+\item \Sexpr{sprintf('%.2f', area(site_window) / 43560)} acre region (roughly
+\Sexpr{prettyNum(c(-1, 1) %*% site_window$xrange, big.mark = ',')} ft by
+\Sexpr{prettyNum(c(-1, 1) %*% site_window$yrange, big.mark = ',')} ft)
+
+\item High density of geomagnetic anomalies around targets
+
+\item Low density of background anomalies
+
+\end{itemize}
+
+<<truth, cache = TRUE>>=
+gauss.elliptic <- function(x, y, mu.x = 0, mu.y = 0, s.a = 1, s.b = 1,
+                           r = 0, maxrate = 1){
+  rot <- zapsmall(matrix(c(cos(r), sin(r), -sin(r), cos(r)), nrow = 2))
+  ab <- diag(c(s.a^2, s.b^2))
+  sigma <- rot %*% ab %*% t(rot)
+  siginv <- solve(sigma)
+  mu <- matrix(c(mu.x, mu.y), nrow = 2)
+  mat <- matrix(rbind(x, y), nrow = 2)
+  return(maxrate * apply(mat, 2, function(vec){
+      exp(-t(vec - mu) %*% siginv %*% (vec - mu) / 2)
+    }))
+}
+x <- seq(1556880, 1564495, by = 20)
+y <- seq(535431, 541130, by = 20)
+intense.mat <- matrix(100, nrow = length(x), length(y))
+for(i in seq_along(x)){
+  for(j in seq_along(y)){
+    intense.mat[i, j] <- 100 + gauss.elliptic(x[i], y[j],
+        mu.x = 1558400, mu.y = 540000,
+        s.a = 800 / (2 * qnorm(0.995)), s.b = 1200 / (2 * qnorm(0.995)),
+        r = pi/6, maxrate = 200
+      ) + gauss.elliptic(x[i], y[j],
+        mu.x = 1562000, mu.y = 537000,
+        s.a = 2000 / (2 * qnorm(0.995)), s.b = 900 / (2 * qnorm(0.995)),
+        r = 0, maxrate = 200
+      )
+  }
+}
+intense.im <- im(t(intense.mat), x, y, unitname = c('foot', 'feet'))
+
+par(mar = c(0, 0, 1, 3))
+plot(intense.im, main = 'True Intensity Surface',
+     border = NA, zlim = c(100, 300), las = 2)
+plot(setminus.owin(owin(c(1556870, 1564495), c(535421, 541130),
+                        unitname = c('foot', 'feet')),
+     site_window), col = 'white', border = 'white', lwd = 2, add = TRUE)
+mtext('Anomalies per Acre', 4, line = -1)
+@
+
+\end{frame}
+
+
+\begin{frame}[allowframebreaks]
+\frametitle{References}
+
+\vspace{-0.5cm}{\tiny
+\printbibliography
+}
+\end{frame}
+
+\end{document}
