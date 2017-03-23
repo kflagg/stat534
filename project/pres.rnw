@@ -409,14 +409,7 @@ instability for large \(p\)
 
 <<polyfit, warning = FALSE, cache = TRUE>>=
 ex_fit1 <- ppm(ex_ppp ~ x + y)
-ex_Q <- quad(data = ex_ppp,
-             dummy = as.ppp(rbind(
-               data.frame(vertices(Window(ex_ppp))),
-               do.call(rbind, lapply(unique(ex_path$x), function(x){
-                 return(data.frame(
-                   x = x, y = seq(min(ex_path$y), max(ex_path$y),
-                                  length.out = 128)
-                 ))}))), W = Window(ex_ppp)))
+ex_Q <- quad(data = ex_ppp, dummy = runifpoint(500000, Window(ex_ppp)))
 
 ex_fit2 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 2), correction = 'iso')
 ex_fit3 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 3), correction = 'iso')
@@ -492,6 +485,7 @@ plot(log(43560 * ex_p12$se), main = '12th Degree log(SE)')
 \begin{frame}
 \frametitle{Problems with Implementation}
 
+\vspace{-11pt}
 \begin{itemize}
 
 \item By default, \texttt{ppm} places dummy points on a grid across a bounding
@@ -499,20 +493,16 @@ box
 
 \begin{itemize}
 
-\item Dummy points outside the actual window are discarded
-
 \item Only \Sexpr{prettyNum(ex_fit1$Q$dummy$n, big.mark = ',')} points on two
 transects are kept
 
 \end{itemize}
 
-\item I place 128 evenly-spaced dummy points along each transect
+\item I draw \Sexpr{prettyNum(ex_Q$dummy$n, big.mark = ',')} points from a
+uniform distribution on the observed region
 
-\begin{itemize}
-
-\item \Sexpr{prettyNum(ex_Q$dummy$n, big.mark = ',')} are used
-
-\end{itemize}
+\item \textcite{wartonshepherd} recommend using enough dummy points that the
+maximized log-likelihood converges
 
 \end{itemize}
 
