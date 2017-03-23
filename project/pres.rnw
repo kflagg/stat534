@@ -98,7 +98,7 @@ Extrapolation from Poisson Process Intensity Surface Models \\}
 
 \item Mapping where endangered species are located
 
-\item Mapping geomegnetic anomalies prior to an unexploded ordnace (UXO)
+\item Mapping geomagnetic anomalies prior to an unexploded ordnance (UXO)
 remediation
 
 \end{itemize}
@@ -163,7 +163,8 @@ whole region
 approximation as a weighted Poisson regression
 
 \item Their method is implemented in \texttt{spatstat}'s \texttt{ppm}, with
-\texttt{glm} from base R or \texttt{gam} from \texttt{mgcv} as the back-end
+\texttt{glm} from base R or \texttt{gam} from \texttt{mgcv} as the back-end,
+using the \texttt{quasi} family
 
 \end{itemize}
 
@@ -289,7 +290,6 @@ points(hw4[observe_win], pch = '.', col = 'white')
 \frametitle{Simple UXO Site}
 
 <<uxoexampledata>>=
-# Define the window for the UXO site.
 site_window <- owin(poly = cbind(x = c(1564294, 1564495, 1556870, 1557126),
                                  y = c(535421, 541130, 541085, 535576)),
                     unitname = c('foot', 'feet'))
@@ -382,19 +382,33 @@ plot(site_window, add = TRUE)
 
 
 \begin{frame}
-\frametitle{Models}
+\frametitle{Trend Surface Models}
 
 \begin{itemize}
 
 \item Polynomial models
-\(\displaystyle\log(\lambda(x,y))
-= \sum_{i=0}^{p}\sum_{j=0}^{p-i}\beta_{ij}x^{i}y^{j}\)
-for \(p = 2, 3, \dots, 12\)
+\begin{equation*}
+\log(\lambda(x,y)) = \sum_{i=0}^{p}\sum_{j=0}^{p-i}\beta_{ij}x^{i}y^{j};
+\qquad p = 2, 3, \dots, 12
+\end{equation*}
+
+\item Can approximate complicated surfaces
+
+\item Expect two peaks, so even \(p \geq 4\) could work well
+
+\item Rescaling \(x\) and \(y\) to mean 0 and variance 1 reduces numerical
+instability for large \(p\)
 
 \end{itemize}
 
-<<dummy, warning = FALSE>>=
-ex_fit1 <- ppm(ex_ppp_full ~ x + y)
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Extrapolated Surfaces}
+
+<<polyfit, warning = FALSE, cache = TRUE>>=
+ex_fit1 <- ppm(ex_ppp ~ x + y)
 ex_Q <- quad(data = ex_ppp,
              dummy = as.ppp(rbind(
                data.frame(vertices(Window(ex_ppp))),
@@ -404,7 +418,106 @@ ex_Q <- quad(data = ex_ppp,
                                   length.out = 128)
                  ))}))), W = Window(ex_ppp)))
 
-par(mfrow = c(1, 2), mar = c(0, 0, 1, 0), cex = 1)
+ex_fit2 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 2), correction = 'iso')
+ex_fit3 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 3), correction = 'iso')
+ex_fit4 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 4), correction = 'iso')
+ex_fit5 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 5), correction = 'iso')
+ex_fit6 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 6), correction = 'iso')
+ex_fit7 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 7), correction = 'iso')
+ex_fit8 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 8), correction = 'iso')
+ex_fit9 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 9), correction = 'iso')
+ex_fit10 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 10), correction = 'iso')
+ex_fit11 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 11), correction = 'iso')
+ex_fit12 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 12), correction = 'iso')
+
+ex_p2 <- predict(ex_fit2, window = site_window, se = TRUE)
+ex_p3 <- predict(ex_fit3, window = site_window, se = TRUE)
+ex_p4 <- predict(ex_fit4, window = site_window, se = TRUE)
+ex_p5 <- predict(ex_fit5, window = site_window, se = TRUE)
+ex_p6 <- predict(ex_fit6, window = site_window, se = TRUE)
+ex_p7 <- predict(ex_fit7, window = site_window, se = TRUE)
+ex_p8 <- predict(ex_fit8, window = site_window, se = TRUE)
+ex_p9 <- predict(ex_fit9, window = site_window, se = TRUE)
+ex_p10 <- predict(ex_fit10, window = site_window, se = TRUE)
+ex_p11 <- predict(ex_fit11, window = site_window, se = TRUE)
+ex_p12 <- predict(ex_fit12, window = site_window, se = TRUE)
+@
+
+<<resplots1>>=
+par(mfrow = c(2, 3), mar = c(1, 0, 1.2, 3), las = 2, cex = 1)
+plot(43560 * ex_p2$estimate, main = '2nd Degree Polynom')
+plot(43560 * ex_p3$estimate, main = '3rd Degree Polynom')
+plot(43560 * ex_p4$estimate, main = '4th Degree Polynom')
+plot(43560 * ex_p5$estimate, main = '5th Degree Polynom')
+plot(43560 * ex_p6$estimate, main = '6th Degree Polynom')
+plot(43560 * ex_p7$estimate, main = '7th Degree Polynom')
+@
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Extrapolated Surfaces}
+
+<<resplots2>>=
+par(mfrow = c(2, 3), mar = c(1, 0, 1.2, 3), las = 2, cex = 1)
+plot(43560 * ex_p8$estimate, main = '8th Degree Polynom')
+plot(43560 * ex_p9$estimate, main = '9th Degree Polynom')
+plot(43560 * ex_p10$estimate, main = '10th Degree Polynom')
+plot(43560 * ex_p11$estimate, main = '11th Degree Polynom')
+plot(43560 * ex_p12$estimate, main = '12th Degree Polynom')
+plot(43560 * density(ex_ppp_full) * area(ex_ppp_full) / area(ex_ppp),
+     main = 'Kernel Density')
+@
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Standard Errors}
+
+<<seplots>>=
+par(mfrow = c(2, 3), mar = c(1, 0, 1.2, 3), las = 2, cex = 1)
+plot(log(43560 * ex_p2$se), main = '2nd Degree log(SE)')
+plot(log(43560 * ex_p4$se), main = '4th Degree log(SE)')
+plot(log(43560 * ex_p6$se), main = '6th Degree log(SE)')
+plot(log(43560 * ex_p8$se), main = '8th Degree log(SE)')
+plot(log(43560 * ex_p10$se), main = '10th Degree log(SE)')
+plot(log(43560 * ex_p12$se), main = '12th Degree log(SE)')
+@
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Problems with Implementation}
+
+\begin{itemize}
+
+\item By default, \texttt{ppm} places dummy points on a grid across a bounding
+box
+
+\begin{itemize}
+
+\item Dummy points outside the actual window are discarded
+
+\item Only \Sexpr{prettyNum(ex_fit1$Q$dummy$n, big.mark = ',')} points on two
+transects are kept
+
+\end{itemize}
+
+\item I place 128 evenly-spaced dummy points along each transect
+
+\begin{itemize}
+
+\item \Sexpr{prettyNum(ex_Q$dummy$n, big.mark = ',')} are used
+
+\end{itemize}
+
+\end{itemize}
+
+<<dummy>>=
+par(mfrow = c(1, 2), mar = c(1, 0, 1, 0), cex = 1)
 plot(ex_fit1$Q$dummy, pch = '.', border = NA,
      main = 'Default Dummy Points')
 plot(site_window, add = TRUE)
@@ -421,10 +534,8 @@ plot(site_window, add = TRUE)
 
 \begin{itemize}
 
-\item Needed to rescale coordinates
-
-\item For \(p \geq 10\), \texttt{pmm} cannot compute SEs because the
-``Fisher information matrix is singular''
+\item For \(p \geq 18\), \texttt{ppm} cannot compute SEs because the
+``Fisher information matrix is singular'' --- 190 coefficients
 
 \item The \texttt{plot} method gives an error about infinite values
 
@@ -433,7 +544,27 @@ grid misses all but two transects
 
 \item The predict method does not work with spline smoothers
 
-\item The magnitudes of the predictions are much to large
+\item The magnitudes of the predictions are much too large
+
+\end{itemize}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Conclusion}
+
+\begin{itemize}
+
+\item Polynomial surfaces are flexible but require much faith in the model
+
+\item How to check these models?
+
+\item How much of the region must be observed?
+
+\item Can implement with existing R packages but not easily
+
+\item What scale are the prediction SEs on?
 
 \end{itemize}
 

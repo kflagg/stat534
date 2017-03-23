@@ -429,41 +429,17 @@ ex_Q <- quad(data = ex_ppp,
                                   length.out = 128)
                  ))}))), W = Window(ex_ppp)))
 
-ex_fit2 <- ppm(ex_Q, ~ polynom(scale(x, center = 1556870, scale = 7625),
-                               scale(y, center = 535421, scale = 5709),
-                                     2), correction = 'iso')
-ex_fit3 <- ppm(ex_Q, ~ polynom(scale(x, center = 1556870, scale = 7625),
-                               scale(y, center = 535421, scale = 5709),
-                                     3), correction = 'iso')
-ex_fit4 <- ppm(ex_Q, ~ polynom(scale(x, center = 1556870, scale = 7625),
-                               scale(y, center = 535421, scale = 5709),
-                                     4), correction = 'iso')
-ex_fit5 <- ppm(ex_Q, ~ polynom(scale(x, center = 1556870, scale = 7625),
-                               scale(y, center = 535421, scale = 5709),
-                                     5), correction = 'iso')
-ex_fit6 <- ppm(ex_Q, ~ polynom(scale(x, center = 1556870, scale = 7625),
-                               scale(y, center = 535421, scale = 5709),
-                                     6), correction = 'iso')
-ex_fit7 <- ppm(ex_Q, ~ polynom(scale(x, center = 1556870, scale = 7625),
-                               scale(y, center = 535421, scale = 5709),
-                                     7), correction = 'iso')
-ex_fit8 <- ppm(ex_Q, ~ polynom(scale(x, center = 1556870, scale = 7625),
-                               scale(y, center = 535421, scale = 5709),
-                                     8), correction = 'iso')
-ex_fit9 <- ppm(ex_Q, ~ polynom(scale(x, center = 1556870, scale = 7625),
-                               scale(y, center = 535421, scale = 5709),
-                                     9), correction = 'iso')
-ex_fit10 <- ppm(ex_Q, ~ polynom(scale(x, center = 1556870, scale = 7625),
-                                scale(y, center = 535421, scale = 5709),
-                                      10), correction = 'iso')
-ex_fit11 <- ppm(ex_Q, ~ polynom(scale(x, center = 1556870, scale = 7625),
-                                scale(y, center = 535421, scale = 5709),
-                                      11), correction = 'iso')
-ex_fit12 <- ppm(ex_Q, ~ polynom(scale(x, center = 1556870, scale = 7625),
-                                scale(y, center = 535421, scale = 5709),
-                                      12), correction = 'iso')
-
-par(mfrow = c(4, 3), mar = c(1, 0, 1.2, 3), las = 2, cex = 1)
+ex_fit2 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 2), correction = 'iso')
+ex_fit3 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 3), correction = 'iso')
+ex_fit4 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 4), correction = 'iso')
+ex_fit5 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 5), correction = 'iso')
+ex_fit6 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 6), correction = 'iso')
+ex_fit7 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 7), correction = 'iso')
+ex_fit8 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 8), correction = 'iso')
+ex_fit9 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 9), correction = 'iso')
+ex_fit10 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 10), correction = 'iso')
+ex_fit11 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 11), correction = 'iso')
+ex_fit12 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 12), correction = 'iso')
 
 # Get predictions and SEs.
 ex_p2 <- predict(ex_fit2, window = site_window, se = TRUE)
@@ -474,9 +450,11 @@ ex_p6 <- predict(ex_fit6, window = site_window, se = TRUE)
 ex_p7 <- predict(ex_fit7, window = site_window, se = TRUE)
 ex_p8 <- predict(ex_fit8, window = site_window, se = TRUE)
 ex_p9 <- predict(ex_fit9, window = site_window, se = TRUE)
-ex_p10 <- predict(ex_fit10, window = site_window)
-ex_p11 <- predict(ex_fit11, window = site_window)
-ex_p12 <- predict(ex_fit12, window = site_window)
+ex_p10 <- predict(ex_fit10, window = site_window, se = TRUE)
+ex_p11 <- predict(ex_fit11, window = site_window, se = TRUE)
+ex_p12 <- predict(ex_fit12, window = site_window, se = TRUE)
+
+par(mfrow = c(4, 3), mar = c(1, 0, 1.2, 3), las = 2, cex = 1)
 
 # Multiply predictions by 43560 to convert from anomalies per square foot
 # to anomalies per acre.
@@ -488,32 +466,32 @@ plot(43560 * ex_p6$estimate, main = '6th Degree')
 plot(43560 * ex_p7$estimate, main = '7th Degree')
 plot(43560 * ex_p8$estimate, main = '8th Degree')
 plot(43560 * ex_p9$estimate, main = '9th Degree')
-plot(43560 * ex_p10, main = '10th Degree')
-plot(43560 * ex_p11, main = '11th Degree')
-plot(43560 * ex_p12, main = '12th Degree')
+plot(43560 * ex_p10$estimate, main = '10th Degree')
+plot(43560 * ex_p11$estimate, main = '11th Degree')
+plot(43560 * ex_p12$estimate, main = '12th Degree')
 plot(43560 * density(ex_ppp_full) * area(ex_ppp_full) / ex_ppp_full$n,
      main = 'Kernel Density')
 @
 
 <<polyse1, fig.width = 6, fig.height = 8, fig.pos = 'p', fig.cap = ''>>=
 par(mfrow = c(4, 3), mar = c(1, 0, 2, 3), las = 2, cex = 1)
-plot(log(43560 * ex_p2$se), main = '2nd Degree\nlog(SE)', zlim = c(6.5, 10.5))
-plot(log(43560 * ex_p3$se), main = '3rd Degree\nlog(SE)', zlim = c(6.5, 10.5))
-plot(log(43560 * ex_p4$se), main = '4th Degree\nlog(SE)', zlim = c(6.5, 10.5))
-plot(ex_p2$se / ex_p2$estimate, main = '2nd Degree\nRSE', zlim = c(0, 2))
-plot(ex_p3$se / ex_p3$estimate, main = '3rd Degree\nRSE', zlim = c(0, 2))
-plot(ex_p4$se / ex_p4$estimate, main = '4th Degree\nRSE', zlim = c(0, 2))
+plot(log(43560 * ex_p2$se), main = '2nd Degree\nlog(SE)')
+plot(log(43560 * ex_p4$se), main = '4th Degree\nlog(SE)')
+plot(log(43560 * ex_p6$se), main = '6th Degree\nlog(SE)')
+plot(ex_p2$se / ex_p2$estimate, main = '2nd Degree\nRSE')
+plot(ex_p4$se / ex_p4$estimate, main = '4th Degree\nRSE')
+plot(ex_p6$se / ex_p6$estimate, main = '6th Degree\nRSE')
 
-plot(log(43560 * ex_p6$se), main = '6th Degree\nlog(SE)', zlim = c(6.5, 10.5))
-plot(log(43560 * ex_p8$se), main = '8th Degree\nlog(SE)', zlim = c(6.5, 10.5))
-plot(log(43560 * ex_p9$se), main = '9th Degree\nlog(SE)', zlim = c(6.5, 10.5))
-plot(ex_p6$se / ex_p6$estimate, main = '6th Degree\nRSE', zlim = c(0, 2))
-plot(ex_p8$se / ex_p8$estimate, main = '8th Degree\nRSE', zlim = c(0, 2))
-plot(ex_p9$se / ex_p9$estimate, main = '9th Degree\nRSE', zlim = c(0, 2))
+plot(log(43560 * ex_p8$se), main = '8th Degree\nlog(SE)')
+plot(log(43560 * ex_p10$se), main = '10th Degree\nlog(SE)')
+plot(log(43560 * ex_p12$se), main = '12th Degree\nlog(SE)')
+plot(ex_p8$se / ex_p8$estimate, main = '8th Degree\nRSE')
+plot(ex_p10$se / ex_p10$estimate, main = '10th Degree\nRSE')
+plot(ex_p12$se / ex_p12$estimate, main = '12th Degree\nRSE')
 @
 
 \texttt{plot} doesn't work, and \texttt{predict} doesn't work on the original
-window. \texttt{predict} can't compute SEs.
+window
 
 
 \section{Discussion and Conclusion}
