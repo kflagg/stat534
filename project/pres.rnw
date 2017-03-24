@@ -134,7 +134,7 @@ region \(D\) (note typos in \textcite{digglebook})
 + \sum_{i=1}^{n}\left\{\log\left(\lambda(\mathbf{s}_{i})\right)
 - \log(\mu)\right\} \\
 &= \sum_{i=1}^{n}\log\left(\lambda(\mathbf{s}_{i})\right)
--\int_{D}\lambda(\mathbf{s})d\mathbf{s} - \log(n!).
+-\int_{D}\lambda(\mathbf{s})d\mathbf{s} - \log(n!)
 \end{align*}
 where \(\mu=\int_{D}\lambda(\mathbf{s})d\mathbf{s}\)
 \end{itemize}
