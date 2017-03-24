@@ -289,7 +289,7 @@ points(hw4[observe_win], pch = '.', col = 'white')
 \begin{frame}
 \frametitle{Simple UXO Site}
 
-<<uxoexampledata>>=
+<<uxoexampledata, cache = TRUE>>=
 site_window <- owin(poly = cbind(x = c(1564294, 1564495, 1556870, 1557126),
                                  y = c(535421, 541130, 541085, 535576)),
                     unitname = c('foot', 'feet'))
@@ -316,7 +316,7 @@ ex_ppp_full <- ppp(ex_anom$x, ex_anom$y, window = site_window)
 
 \end{itemize}
 
-<<truth, cache = TRUE>>=
+<<truth, cache = TRUE, dependson = 'uxoexampledata'>>=
 gauss.elliptic <- function(x, y, mu.x = 0, mu.y = 0, s.a = 1, s.b = 1,
                            r = 0, maxrate = 1){
   rot <- zapsmall(matrix(c(cos(r), sin(r), -sin(r), cos(r)), nrow = 2))
@@ -407,7 +407,7 @@ instability for large \(p\)
 \begin{frame}
 \frametitle{Extrapolated Surfaces}
 
-<<polyfit, warning = FALSE, cache = TRUE>>=
+<<polyfit, warning = FALSE, cache = TRUE, dependson = 'uxoexampledata'>>=
 ex_fit1 <- ppm(ex_ppp ~ x + y)
 ex_Q <- quad(data = ex_ppp, dummy = runifpoint(500000, Window(ex_ppp)))
 
@@ -436,7 +436,7 @@ ex_p11 <- predict(ex_fit11, window = site_window, se = TRUE)
 ex_p12 <- predict(ex_fit12, window = site_window, se = TRUE)
 @
 
-<<resplots1>>=
+<<resplots1, cache = TRUE, dependson = 'polyfit'>>=
 par(mfrow = c(2, 3), mar = c(1, 0, 1.2, 3), las = 2, cex = 1)
 plot(43560 * ex_p2$estimate, main = '2nd Degree Polynom')
 plot(43560 * ex_p3$estimate, main = '3rd Degree Polynom')
@@ -452,7 +452,7 @@ plot(43560 * ex_p7$estimate, main = '7th Degree Polynom')
 \begin{frame}
 \frametitle{Extrapolated Surfaces}
 
-<<resplots2>>=
+<<resplots2, cache = TRUE, dependson = 'polyfit'>>=
 par(mfrow = c(2, 3), mar = c(1, 0, 1.2, 3), las = 2, cex = 1)
 plot(43560 * ex_p8$estimate, main = '8th Degree Polynom')
 plot(43560 * ex_p9$estimate, main = '9th Degree Polynom')
@@ -469,7 +469,7 @@ plot(43560 * density(ex_ppp_full) * area(ex_ppp_full) / area(ex_ppp),
 \begin{frame}
 \frametitle{Standard Errors}
 
-<<seplots>>=
+<<seplots, cache = TRUE, dependson = 'polyfit'>>=
 par(mfrow = c(2, 3), mar = c(1, 0, 1.2, 3), las = 2, cex = 1)
 plot(log(43560 * ex_p2$se), main = '2nd Degree log(SE)')
 plot(log(43560 * ex_p4$se), main = '4th Degree log(SE)')
@@ -506,7 +506,7 @@ maximized log-likelihood converges
 
 \end{itemize}
 
-<<dummy>>=
+<<dummy, cache = TRUE, dependson = 'polyfit'>>=
 par(mfrow = c(1, 2), mar = c(1, 0, 1, 0), cex = 1)
 plot(ex_fit1$Q$dummy, pch = '.', border = NA,
      main = 'Default Dummy Points')
@@ -534,8 +534,6 @@ grid misses all but two transects
 
 \item The predict method does not work with spline smoothers
 
-\item The magnitudes of the predictions are much too large
-
 \end{itemize}
 
 \end{frame}
@@ -553,8 +551,6 @@ grid misses all but two transects
 \item How much of the region must be observed?
 
 \item Can implement with existing R packages but not easily
-
-\item What scale are the prediction SEs on?
 
 \end{itemize}
 

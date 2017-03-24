@@ -318,7 +318,7 @@ points(hw4[observe_win], pch = '.', col = 'white')
 
 \section{Simulated UXO Site}
 
-<<uxoexampledata>>=
+<<uxoexampledata, cache = TRUE>>=
 # Define the window for the UXO site.
 site_window <- owin(poly = cbind(x = c(1564294, 1564495, 1556870, 1557126),
                                  y = c(535421, 541130, 541085, 535576)),
@@ -335,7 +335,7 @@ use generated as Poisson processes with bivariate Gaussian intensity. The
 total intesnsity at the center of each concentrated munitions use region is
 300 anomalies per acre~(Figure~\ref{fig:truth}).
 
-<<truth, cache = TRUE, fig.width = 4, fig.pos = 't', fig.cap = 'True intensity at the simulated UXO site.'>>=
+<<truth, cache = TRUE, dependson = 'uxoexampledata', fig.width = 4, fig.pos = 't', fig.cap = 'True intensity at the simulated UXO site.'>>=
 # Bivariate normal intensity function that I originalally wrote for my
 # writing project, parameterized in terms of the major and minor axes scales
 # and the angle of the major axis from horizontal.
@@ -381,7 +381,7 @@ plot(setminus.owin(owin(c(1556870, 1564495), c(535421, 541130),
 mtext('Anomalies per Acre', 4, line = 2)
 @
 
-<<sim2000obs, fig.pos = 't', fig.cap = 'Observed geomagnetic anomalies from one realization of the UXO site. The transects are not shown on this plot because they would obscure the points.'>>=
+<<sim2000obs, cache = TRUE, dependson = 'uxoexampledata', fig.pos = 't', fig.cap = 'Observed geomagnetic anomalies from one realization of the UXO site. The transects are not shown on this plot because they would obscure the points.'>>=
 # Load the sample data used in my writing project.
 # The anomaly file contains the locations of the observed anamolies and the
 # cog file contains the course-over-ground waypoints on the transects.
@@ -416,18 +416,15 @@ qegion of interest.
 
 use \texttt{polynom()} not \texttt{poly()}!
 
-<<polyfit1, cache = TRUE, warning = FALSE, fig.width = 6, fig.height = 8, fig.pos = 'p', fig.cap = ''>>=
+<<polyfit1, cache = TRUE, dependson = 'sim2000obs', warning = FALSE, fig.width = 6, fig.height = 8, fig.pos = 'p', fig.cap = ''>>=
+# Do a simple fit where spatstat sets up the quadrature so we can see where it
+# puts the dummy points.
+ex_fit1 <- ppm(ex_ppp ~ x + y)
+
 # Create a quadrature scheme manually to ensure there are dummy points on
 # each transect.
 # TODO: Figure out weights.
-ex_Q <- quad(data = ex_ppp,
-             dummy = as.ppp(rbind(
-               data.frame(vertices(Window(ex_ppp))),
-               do.call(rbind, lapply(unique(ex_path$x), function(x){
-                 return(data.frame(
-                   x = x, y = seq(min(ex_path$y), max(ex_path$y),
-                                  length.out = 128)
-                 ))}))), W = Window(ex_ppp)))
+ex_Q <- quad(data = ex_ppp, dummy = runifpoint(500000, Window(ex_ppp)))
 
 ex_fit2 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 2), correction = 'iso')
 ex_fit3 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 3), correction = 'iso')
@@ -469,11 +466,11 @@ plot(43560 * ex_p9$estimate, main = '9th Degree')
 plot(43560 * ex_p10$estimate, main = '10th Degree')
 plot(43560 * ex_p11$estimate, main = '11th Degree')
 plot(43560 * ex_p12$estimate, main = '12th Degree')
-plot(43560 * density(ex_ppp_full) * area(ex_ppp_full) / ex_ppp_full$n,
+plot(43560 * density(ex_ppp_full) * area(ex_ppp_full) / area(ex_ppp),
      main = 'Kernel Density')
 @
 
-<<polyse1, fig.width = 6, fig.height = 8, fig.pos = 'p', fig.cap = ''>>=
+<<polyse1, cache = TRUE, dependson = 'polyfit1', fig.width = 6, fig.height = 8, fig.pos = 'p', fig.cap = ''>>=
 par(mfrow = c(4, 3), mar = c(1, 0, 2, 3), las = 2, cex = 1)
 plot(log(43560 * ex_p2$se), main = '2nd Degree\nlog(SE)')
 plot(log(43560 * ex_p4$se), main = '4th Degree\nlog(SE)')
