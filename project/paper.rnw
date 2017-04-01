@@ -91,8 +91,9 @@ predict the intensity in a grid of these windows. There are several problems
 with this approach: it assumes stationarity when the moving averages are
 believed to be non-stationary, it ignores the point process nature of the
 data, and it is very sensitive to the window size~\parencite{vspguide,wp}. In
-this project, I evaluate the use of polynomial trend surface models for the
-log-intensity at a simulated UXO site.
+this project, I review the use of polynomial trend surface models for the
+log-intensity at a simulated UXO site, ultimately concluding that these
+methods are not yet developed well enough to be useful.
 
 
 \section{Surface Fitting by Maximum Likelihood}
@@ -157,17 +158,7 @@ better reflects the experience of a na\"{i}ve practitioner who is not an
 expert on spatial point processes.
 
 
-\section{Examples}
-
-To illustrate model fitting and prediction, I present two examples before
-proceeding to the simulation study. The first is a toy example where I
-simulate from a Poisson process with a true log-linear intensity function and
-then estimate coefficients using the true model form. The second example
-introduces the my UXO site and provides a case study of fitting a polynomial
-trend surface to one realization of the the site.
-
-
-\section{True Log-Linear Intensity Surface}
+\section{True Log-Linear Intensity Surface Example}
 
 <<hw4_sim>>=
 simulate_win <- owin(c(0, 1), c(0, 1))
@@ -177,8 +168,11 @@ predict_win <- owin(c(-0.5, 1.5), c(-0.5, 1.5))
 hw4 <- rpoispp(function(x, y){exp(5 * x + 2 * y)}, win = simulate_win)
 @
 
-Previously this semester, we worked with an example of a Poisson process on
-the unit square \(\{(x,y):\Sexpr{min(simulate_win$xrange)} < x
+Before moving on to a realistic example UXO site, I present a simple toy
+example using a true log-linear intensity surface to illustrate model fitting
+and prediction outside the observed region. Previously this semester, we
+worked with an example of a Poisson process on the unit square
+\(\{(x,y):\Sexpr{min(simulate_win$xrange)} < x
 < \Sexpr{max(simulate_win$xrange)}, \Sexpr{min(simulate_win$yrange)} < y
 < \Sexpr{max(simulate_win$yrange)}\}\) with the log-linear intensity surface
 \begin{equation*}
@@ -189,7 +183,7 @@ I will continue this example, fitting the model
 \log(\lambda(x,y)) = \beta_{0} + \beta_{1}x + \beta_{2}y
 \end{equation*}
 first using the process observed over the full region (the entire unit
-square), and then using the process observed in a subregion treating
+square), and then using the process observed in a subregion, treating
 \(\{(x,y): \Sexpr{min(omit_win$xrange)} < x < \Sexpr{max(omit_win$xrange)},
 \Sexpr{min(omit_win$yrange)} < y < \Sexpr{max(omit_win$yrange)}\}\) as
 unobserved. This unobserved section is a region of relatively high intensity,
@@ -202,10 +196,22 @@ I will use both estimated models to predict on
 < \Sexpr{max(predict_win$yrange)}\}\). Figure~\ref{fig:hw4_plot} shows the
 realization of this process that I will use for both model fits.
 
-<<hw4_plot, fig.pos = 'b!', fig.cap = 'One realization of a Poisson process with log-linear intensity on the unit square. The dashed square shows the outline of the ``unobserved" region; when fitting the model to the subregion, the points inside it will be discarded and it will not be considered in constructing the approximation to the likelihood.'>>=
-par(mar = c(0, 0, 1, 0))
+<<hw4_fit_full>>=
+hw4_fit_f <- ppm(hw4 ~ x + y, correction = 'isotropic')
+hw4_pred_f <- predict(hw4_fit_f, window = predict_win, se = TRUE)
+# By default predictions are on a 128 by 128 grid.
+@
+
+<<hw4_fit_s>>=
+hw4_fit_s <- ppm(hw4[observe_win] ~ x + y, correction = 'isotropic')
+hw4_pred_s <- predict(hw4_fit_s, window = predict_win, se = TRUE)
+@
+
+<<hw4_plot, fig.pos = 'b!', fig.cap = 'One realization of a Poisson process with log-linear intensity on the unit square. The left panel shows all of the event locations, with the dashed square outlining of the ``unobserved" region. The right panel shows the events and dummy points used when fitting the model to the subregion; the small square is not considered in constructing the approximation to the likelihood, and the points inside it are discarded.'>>=
+par(mfrow = c(1, 2), mar = c(0, 0, 1, 0), cex = 1)
 plot(hw4, main = 'Event Locations')
 plot(omit_win, lty = 2, add = TRUE)
+plot(hw4_fit_s$Q, main = 'Data and Dummy Points')
 @
 
 For clarity, I denote the estimated models as
@@ -220,7 +226,7 @@ for the model fit to the full region, and
 \end{equation*}
 for the model fit to the subregion. I use \texttt{ppm} to fit the models
 with its default likelihood approximation and isotropic edge correction.
-The coefficitents and standard errors are similar for both estimated models,
+The coefficients and standard errors are similar for both estimated models,
 and the true values \(\beta_{0} = 0\), \(\beta_{1} = 5\), and
 \(\beta_{2} = 2\) all fall within one standard error of the
 estimates~(Tables~\ref{hw4estf} and \ref{hw4ests}).
@@ -234,30 +240,22 @@ expected from the similarity of the coefficient estimates, the predicted
 log-intensity surfaces for both models show very similar linear trends~(top
 row of the figure). At a glance the prediction standard errors for both
 models appear similar to the predicted intensities, as seen in the middle
-row of the figure~(shown on a logarithmic scale for visibility). In a linear
-model setting we would expect the prediction standard error to increase with
-the distance from the observations, but no such trend is apparent here; even
-in the bottom left of the prediction region the standard errors decrease as
-the predicted intensity decreases. However, it is illuminating to plot the
-predictor's relative standard error (the ratio of the standard error to the
-predicted intensity, bottom row of the figure). This ratio is not constant,
-and in fact it is lowest where the highest intensity of events was observed.
+row of the figure~(shown on a logarithmic scale for visibility). This makes
+intuitive sense because higher true point process intensity implies greater
+variance in the number of points, which should lead to greater uncertainty in
+estimation or prediction of the intensity. In a linear model setting we would
+expect the prediction standard error to increase with the distance from the
+observations, but no such trend is apparent here; even in the bottom left of
+the prediction region the standard errors decrease as the predicted intensity
+decreases. However, it is illuminating to plot the predictor's relative
+standard error (the ratio of the standard error to the predicted intensity,
+bottom row of the figure). This ratio is not constant, and in fact it is
+lowest where the highest intensity of events was observed.
 
 In summary, the estimation procedure does an adequate job of estimating the
 parameters of the true model for these data, and the standard error of the
 predicted intensity appears to be more strongly related to the distance from
 the observed events than to the distance from the observed region.
-
-<<hw4_fit_full>>=
-hw4_fit_f <- ppm(hw4 ~ x + y, correction = 'isotropic')
-hw4_pred_f <- predict(hw4_fit_f, window = predict_win, se = TRUE)
-# By default predictions are on a 128 by 128 grid.
-@
-
-<<hw4_fit_s>>=
-hw4_fit_s <- ppm(hw4[observe_win] ~ x + y, correction = 'isotropic')
-hw4_pred_s <- predict(hw4_fit_s, window = predict_win, se = TRUE)
-@
 
 <<hw4_fitcoefs_f, results = 'asis'>>=
 hw4_coef_f <- summary(hw4_fit_f)$coefs.SE.CI[,c('Estimate', 'S.E.')]
@@ -412,7 +410,22 @@ anomalies within three feet of a transect are
 recorded~(Figure~\ref{fig:sim2000obs}). In total,
 \Sexpr{sprintf('%.1f', area(ex_win) / 43560)} acres are observed, covering
 \Sexpr{sprintf('%.1f\\%%', 100 * area(ex_win) / area(site_window))} of the
-qegion of interest.
+region of interest.
+
+If the general structure of the site (such as the number and shape of the
+high-intensity regions and the type of background process) is known then the
+most appropriate model for the anomaly intensity could be a mixture model,
+but in practice these details are rarely available. Therefore, practitioners
+prefer flexible models without defined structure. Polynomial models are
+conceptually simple, and capable of appriximating complicated surfaces. I
+fit \(p\)-degree polynomial models of the form
+\begin{equation*}
+\log\left(\lambda\left(x, y\right)\right)
+= \sum_{i = 0}^{p} \sum_{j=0}^{p-i} \beta_{ij} x^{i} y^{j}
+\end{equation*}
+for \(p = 2, 3, \dots, 12\). Here, the coordinates \(x\) and \(y\) are
+standardized to have mean 0 and standard variance 1 in order to reduce
+numerical instability for the larger exponents.
 
 use \texttt{polynom()} not \texttt{poly()}!
 
