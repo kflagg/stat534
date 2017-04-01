@@ -1,0 +1,269 @@
+\documentclass[11pt]{article}
+\usepackage{fullpage,graphicx,float,amsmath,enumitem,fancyhdr}
+
+\setlist{parsep=5.5pt}
+\setlength{\parindent}{0pt}
+
+\newcommand\assignment{Stat 534 Homework 8}
+\newcommand\myname{Kenny Flagg}
+\newcommand\duedate{March 31, 2017}
+
+\pagestyle{fancy}
+\lhead{\assignment}
+\chead{\duedate}
+\rhead{\myname}
+\setlength{\headheight}{18pt}
+\setlength{\headsep}{2pt}
+
+\title{\assignment}
+\author{\myname}
+\date{\duedate}
+
+\begin{document}
+\maketitle
+
+<<setup, echo = FALSE, message = FALSE, cache = FALSE>>=
+library(knitr)
+library(extrafont)
+opts_chunk$set(echo = TRUE, comment = NA, message = FALSE,
+               show.signif.stars = FALSE,
+               fig.align = 'center', fig.width = 6.5, fig.height = 4,
+               fig.pos = 'H', size = 'footnotesize', dev = 'pdf',
+               dev.args = list(family = 'CM Roman', pointsize = 11))
+knit_theme$set('print')
+
+library(gridExtra)
+library(xtable)
+options(xtable.floating = FALSE,
+        xtable.sanitize.rownames.function = function(x) x,
+        xtable.sanitize.colnames.function = function(x) x,
+        width = 80, scipen = 2, show.signif.stars = FALSE)
+
+set.seed(6262)
+@
+
+\begin{enumerate}
+
+\item%1
+{\it The New York Leukemia data are attached along with homework as a comma
+delimited text file. You are to explore how excluding 3 potential outliers
+(observations 110, 120, and 121) affects the residual spatial autocorrelation,
+regression results, and the conclusions obtained from them. Is weighting still
+necessary? Fit \(OLS\), \(WLS\), and appropriate \(GLS\) models following my
+steps in the example in class.}
+
+I begin by fitting the OLS model, omitting the outliers, and examining the
+semivariogram of the residuals. This semivariogram does not look very
+different from the semivariogram of from the model fit the the entire dataset,
+so I again use an initial range of 18 and an initial nugget of 0.9. I compare
+all six models on the next page.
+
+<<prob1_1>>=
+library(nlme)
+leukemia <- read.csv('leukemia.csv')
+
+leuk_ols <- gls(z ~ pexp + age65 + home, data = leukemia, subset = -c(110, 120, 121))
+plot(Variogram(leuk_ols, maxDist = 120))
+@
+
+<<prob1_2>>=
+# Fit the weighted and spatial models.
+leuk_wls <- gls(z ~ pexp + age65 + home, data = leukemia, subset = -c(110, 120, 121),
+                weights = varFixed(~1/pop))
+leuk_exp <- gls(z ~ pexp + age65 + home, data = leukemia, subset = -c(110, 120, 121),
+                correlation = corExp(c(6, 0.9), form = ~x+y, nugget = TRUE))
+leuk_sph <- gls(z ~ pexp + age65 + home, data = leukemia, subset = -c(110, 120, 121),
+                correlation = corSpher(c(6, 0.9), form = ~x+y, nugget = TRUE))
+leuk_exp_w <- gls(z ~ pexp + age65 + home, data = leukemia, subset = -c(110, 120, 121),
+                  correlation = corExp(c(6, 0.9), form = ~x+y, nugget = TRUE),
+                  weights = varFixed(~1/pop))
+leuk_sph_w <- gls(z ~ pexp + age65 + home, data = leukemia, subset = -c(110, 120, 121),
+                  correlation = corSpher(c(6, 0.9), form = ~x+y, nugget = TRUE),
+                  weights = varFixed(~1/pop))
+@
+
+The table below shows the \texttt{pexp} coefficient estimates and AICs for all
+six models. All the slope estimates are similar, but the AICs indicate that
+the OLS model has the best fit. With the outliers removed, there is no need
+for weighting.
+
+\begin{center}
+<<prob1_3, echo = FALSE, results = 'asis'>>=
+aic <- AIC(leuk_ols, leuk_wls, leuk_exp, leuk_sph, leuk_exp_w, leuk_sph_w)$AIC
+
+# Recreate the table from the notes.
+out_table <- data.frame(rbind(
+    summary(leuk_ols)$tTable['pexp', c('Value', 'Std.Error')],
+    summary(leuk_wls)$tTable['pexp', c('Value', 'Std.Error')],
+    summary(leuk_exp)$tTable['pexp', c('Value', 'Std.Error')],
+    summary(leuk_sph)$tTable['pexp', c('Value', 'Std.Error')],
+    summary(leuk_exp_w)$tTable['pexp', c('Value', 'Std.Error')],
+    summary(leuk_sph_w)$tTable['pexp', c('Value', 'Std.Error')]),
+    aic, aic - min(aic),
+    row.names = c('OLS', 'WLS', 'Exponential', 'Spherical',
+                 'Exponential, Weighted', 'Spherical, Weighted')
+  )
+colnames(out_table) <- c('\\(\\widehat{\\beta}_{1}\\)',
+                         '\\(SE\\left(\\widehat{\\beta}_{1}\\right)\\)',
+                         '\\(AIC\\)', '\\(\\Delta AIC\\)')
+
+xtable(out_table, digits = c(0, 4, 4, 3, 3))
+@
+\end{center}
+
+\item%2
+{\it Imagine a lattice process on a \(2 \times 3\) rectangle. The sites
+\(\mathbf{s}_{1}\), \(\mathbf{s}_{2}\), and \(\mathbf{s}_{3}\) make up the
+first row, the remaining sites make up the second row. Assume that the spatial
+connectivity matrix is given by}
+\begin{equation*}
+\mathbf{W} = \begin{bmatrix}
+0 & 1 & 0 & 1 & 0 & 0 \\
+1 & 0 & 1 & 0 & 1 & 0 \\
+0 & 1 & 0 & 0 & 0 & 1 \\
+1 & 0 & 0 & 0 & 1 & 0 \\
+0 & 1 & 0 & 1 & 0 & 1 \\
+0 & 0 & 1 & 0 & 1 & 0
+\end{bmatrix}
+\end{equation*}
+{\it For a simultaneous and conditional autoregressive scheme with}
+\begin{equation*}
+\mathrm{Var}\left[\mathbf{Z}(\mathbf{s})\right]
+= \sigma^{2} \left(\mathbf{I} - \rho \mathbf{W}\right)^{-1}
+\left(\mathbf{I} - \rho \mathbf{W}'\right)^{-1}
+\end{equation*}
+{\it and}
+\begin{equation*}
+\mathrm{Var}\left[\mathbf{Z}(\mathbf{s})\right]
+= \sigma^{2} \left(\mathbf{I} - \rho \mathbf{W}\right)^{-1}
+\end{equation*}
+{\it respectively, and with \(\rho = 0.25\) do the following:}
+
+\begin{enumerate}
+
+\item%a
+{\it Identify the neighbors of lattice cell \(\mathbf{s}_2\)}.
+
+The neighbors of \(\mathbf{s}_{2}\), corresponding to the columns of
+\(\mathbf{W}\) that are nonzero in the second row, are \(\mathbf{s}_{1}\),
+\(\mathbf{s}_{3}\), and \(\mathbf{s}_{5}\).
+
+\item%b
+{\it Compute the variance-covariance matrices for the SAR and CAR schemes.}
+
+For SAR,
+
+<<prob2b1>>=
+W <- matrix(c(0, 1, 0, 1, 0, 0,
+              1, 0, 1, 0, 1, 0,
+              0, 1, 0, 0, 0, 1,
+              1, 0, 0, 0, 1, 0,
+              0, 1, 0, 1, 0, 1,
+              0, 0, 1, 0, 1, 0),
+            nrow = 6)
+rho <- 0.25
+
+Sigma_SAR <- solve(diag(6) - rho * W) %*% solve(diag(6) - rho * t(W))
+print(Sigma_SAR)
+@
+so
+\begin{equation*}
+\mathrm{Var}\left[\mathbf{Z}(\mathbf{s})\right]
+= \sigma^{2} \begin{bmatrix}
+<<prob2b2, echo = FALSE, results = 'asis'>>=
+cat(apply(format(Sigma_SAR, digits = 3), 1, paste, collapse = ' & '),
+    sep = ' \\\\\n')
+@
+\end{bmatrix}.
+\end{equation*}
+
+For CAR,
+
+<<prob2b3>>=
+Sigma_CAR <- solve(diag(6) - rho * W) 
+print(Sigma_CAR)
+@
+so
+\begin{equation*}
+\mathrm{Var}\left[\mathbf{Z}(\mathbf{s})\right]
+= \sigma^{2} \begin{bmatrix}
+<<prob2b4, echo = FALSE, results = 'asis'>>=
+cat(apply(format(Sigma_CAR, digits = 3), 1, paste, collapse = ' & '),
+    sep = ' \\\\\n')
+@
+\end{bmatrix}.
+\end{equation*}
+
+\pagebreak
+\item%c
+{\it Determine which of the processes is second-order stationary. Justify
+your answer.}
+
+Neither process is second-order stationary because the variance is not
+spatially constant. For both processes, the variance of
+\(\mathrm{Z}(\mathbf{s}_{2})\) and \(\mathrm{Z}(\mathbf{s}_{5})\) is larger
+than the variance in other cells.
+
+\item%d
+{\it Describe the correlation patterns that result. Are observations
+equicorrelated that are the same distance apart? Do correlations decrease
+with increasing lag distance?}
+
+The SAR correlation matrix is
+<<prob2d1>>=
+D_SAR_invsqrt <- diag(1 / sqrt(diag(Sigma_SAR)))
+D_SAR_invsqrt %*% Sigma_SAR %*% D_SAR_invsqrt
+@
+and the CAR correlation matrix is
+<<prob2d2>>=
+D_CAR_invsqrt <- diag(1 / sqrt(diag(Sigma_CAR)))
+D_CAR_invsqrt %*% Sigma_CAR %*% D_CAR_invsqrt
+@
+so we see that the correlations generally decrease as the lag increases, but
+not all pairs at a given lag are equally correlated. Neighbors within a row
+are more highly correlated than neighbors across rows, but pairs of cells in
+the same row with lag 2 are less correlated than pairs in different rows with
+lag 2.
+
+Assuming square grid cells, the lag distance is equivalent to the Manhattan
+distance. The correlation structure appears to reflect the Euclidean distance
+because diagonally adjacent cells (lag 2; cells \(\mathbf{s}_{1}\) and
+\(\mathbf{s}_{5}\), for example) are more correlated than pairs at lag 2 but
+in the same row (e.g., cells \(\mathbf{s}_{1}\) and \(\mathbf{s}_{3}\)), and
+the latter have a larger Euclidean distance.
+
+\end{enumerate}
+
+\pagebreak
+\item%3
+{\it We have 5 binomial count responses at 5 locations, i.e. the number of
+successes out of \(n(\mathbf{s}_{i})\) trials. Assume a single covariate
+\(X_{1}\) and that there is no overdispersion. Find the diagonal elements of
+\(\mathbf{V}_{\mu}^{1/2}\) being sure to express these in terms of
+\(\beta_{0}\) and \(\beta_{1}\).}
+
+The model is
+\begin{align*}
+Z(\mathbf{s}_{i}) &\sim
+\mathrm{Binomial}(n(\mathbf{s}_{i}), \mu(\mathbf{s}_{i})); \\
+\log\left(\frac{\mu(\mathbf{s}_{i})}{1-\mu(\mathbf{s}_{i})}\right)
+&= \beta_{0} + \beta_{1} x_{1}(\mathbf{s}_{i})
+\end{align*}
+for \(i = 1, \dots, 5\). Then, assuming no overdispersion, the \(i\)th
+diagonal element of \(\mathbf{V}_{\mu}^{1/2}\) is
+\begin{align*}
+\sqrt{v(\mu(\mathbf{s}_{i}))}
+&= \sqrt{n(\mathbf{s}_{i})\mu(\mathbf{s}_{i})(1-\mu(\mathbf{s}_{i}))} \\
+&= \sqrt{n(\mathbf{s}_{i})
+\left(\frac{\exp\left[\beta_{0} + \beta_{1} x_{1}(\mathbf{s}_{i})\right]}
+{1 + \exp\left[\beta_{0} + \beta_{1} x_{1}(\mathbf{s}_{i})\right]}\right)
+\left(\frac{1}{1 + \exp\left[\beta_{0}
++ \beta_{1} x_{1}(\mathbf{s}_{i})\right]}\right)} \\
+&= \frac{\sqrt{n(\mathbf{s}_{i})\exp\left[\beta_{0}
++ \beta_{1} x_{1}(\mathbf{s}_{i})\right]}}
+{1 + \exp\left[\beta_{0} + \beta_{1} x_{1}(\mathbf{s}_{i})\right]}.
+\end{align*}
+
+\end{enumerate}
+
+\end{document}
