@@ -11,7 +11,7 @@
 \newcommand\assignment{Stat 534 Project: \\
 Extrapolation from Poisson Process Intensity Surface Models}
 \newcommand\myname{Kenny Flagg}
-\newcommand\duedate{\today}
+\newcommand\duedate{April 2, 2017}
 
 \pagestyle{fancy}
 \lhead{Stat 534 Project}
@@ -277,7 +277,7 @@ print(xtable(hw4_coef_s, label = 'hw4ests',
       table.placement = 't!')
 @
 
-<<hw4_fitplot, fig.pos = 'p', fig.height = 8, fig.cap = 'Estimated log-intensity surface, log-scale prediction standard errors, and relative standard error from models fit using all events in the full simulation region (left) and events in a subset of the simulation region (right). The regions and event locations are overlaid in white.'>>=
+<<hw4_fitplot, fig.pos = 'p', fig.height = 8, fig.cap = 'Estimated log-intensity surface, log-scale prediction standard errors, and relative standard errors from models fit using all events in the full simulation region (left) and events in a subset of the simulation region (right). The regions and event locations are overlaid in white.'>>=
 par(mfrow = c(3, 2), mar = c(1, 0, 1.2, 2), las = 2, cex = 1)
 
 plot(log(hw4_pred_f$estimate), zlim = c(-4.5, 10.5),
@@ -414,29 +414,26 @@ region of interest.
 
 If the general structure of the site (such as the number and shape of the
 high-intensity regions and the type of background process) is known then the
-most appropriate model for the anomaly intensity could be a mixture model,
-but in practice these details are rarely available. Therefore, practitioners
-prefer flexible models without defined structure. Polynomial models are
-conceptually simple, and capable of appriximating complicated surfaces. I
-fit \(p\)-degree polynomial models of the form
+most appropriate model for the anomaly intensity could be a mixture model or
+a trend surface with a particular form, but in practice these details are
+rarely available. Therefore, practitioners prefer flexible models without
+defined structure. I fit \(p\)-degree polynomial models of the form
 \begin{equation*}
 \log\left(\lambda\left(x, y\right)\right)
 = \sum_{i = 0}^{p} \sum_{j=0}^{p-i} \beta_{ij} x^{i} y^{j}
 \end{equation*}
-for \(p = 2, 3, \dots, 12\). Here, the coordinates \(x\) and \(y\) are
-standardized to have mean 0 and standard variance 1 in order to reduce
+for \(p = 2, 3, \dots, 12\) using 500,000 dummy points randomly selected from
+a uniform distribution over the observed region. The coordinates \(x\) and
+\(y\) are standardized to have mean 0 and variance 1 in order to reduce
 numerical instability for the larger exponents.
 
-use \texttt{polynom()} not \texttt{poly()}!
-
-<<polyfit1, cache = TRUE, dependson = 'sim2000obs', warning = FALSE, fig.width = 6, fig.height = 8, fig.pos = 'p', fig.cap = ''>>=
+<<polyfit1, cache = TRUE, dependson = 'sim2000obs', warning = FALSE>>=
 # Do a simple fit where spatstat sets up the quadrature so we can see where it
 # puts the dummy points.
 ex_fit1 <- ppm(ex_ppp ~ x + y)
 
 # Create a quadrature scheme manually to ensure there are dummy points on
 # each transect.
-# TODO: Figure out weights.
 ex_Q <- quad(data = ex_ppp, dummy = runifpoint(500000, Window(ex_ppp)))
 
 ex_fit2 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 2), correction = 'iso')
@@ -464,26 +461,44 @@ ex_p10 <- predict(ex_fit10, window = site_window, se = TRUE)
 ex_p11 <- predict(ex_fit11, window = site_window, se = TRUE)
 ex_p12 <- predict(ex_fit12, window = site_window, se = TRUE)
 
+ex_kde <- density(ex_ppp_full)
+@
+
+Figure~\ref{fig:polyplot1} shows the predicted intensity surfaces for the
+polynomial models, along with a kernel density estimate for comparison. The
+2nd-order polynomial surface is too simple to capture the bimodal surface,
+
+The kernel density estimate is computed using the \texttt{spatstat}'s default
+``simple rule of thumb'' to select the smoothing bandwidth. Because the
+anomalies located more than three feet from a transect were not observed, I
+would expect the kernel density estimate to show ridges of high intensity
+along the transects. As it turns out, the default bandwith is large enough to
+smooth across multiple transects so the ridges do not appear. However, the
+kernel density estimate is biased low because not all anomalies are observed;
+I divide the estimate by the proportion of the area observed as an approximate
+bias correction.
+
+<<polyplot1, fig.width = 6, fig.height = 8, fig.pos = 'p', fig.cap = 'Predicted intensity surfaces for eleven polynomial models, and a kernel density estimate for comparision.'>>=
 par(mfrow = c(4, 3), mar = c(1, 0, 1.2, 3), las = 2, cex = 1)
 
 # Multiply predictions by 43560 to convert from anomalies per square foot
 # to anomalies per acre.
-plot(43560 * ex_p2$estimate, main = '2nd Degree')
-plot(43560 * ex_p3$estimate, main = '3rd Degree')
-plot(43560 * ex_p4$estimate, main = '4th Degree')
-plot(43560 * ex_p5$estimate, main = '5th Degree')
-plot(43560 * ex_p6$estimate, main = '6th Degree')
-plot(43560 * ex_p7$estimate, main = '7th Degree')
-plot(43560 * ex_p8$estimate, main = '8th Degree')
-plot(43560 * ex_p9$estimate, main = '9th Degree')
-plot(43560 * ex_p10$estimate, main = '10th Degree')
-plot(43560 * ex_p11$estimate, main = '11th Degree')
-plot(43560 * ex_p12$estimate, main = '12th Degree')
-plot(43560 * density(ex_ppp_full) * area(ex_ppp_full) / area(ex_ppp),
+plot(43560 * ex_p2$estimate, zlim = c(0, 500), main = '2nd Degree')
+plot(43560 * ex_p3$estimate, zlim = c(0, 500), main = '3rd Degree')
+plot(43560 * ex_p4$estimate, zlim = c(0, 500), main = '4th Degree')
+plot(43560 * ex_p5$estimate, zlim = c(0, 500), main = '5th Degree')
+plot(43560 * ex_p6$estimate, zlim = c(0, 500), main = '6th Degree')
+plot(43560 * ex_p7$estimate, zlim = c(0, 500), main = '7th Degree')
+plot(43560 * ex_p8$estimate, zlim = c(0, 500), main = '8th Degree')
+plot(43560 * ex_p9$estimate, zlim = c(0, 500), main = '9th Degree')
+plot(43560 * ex_p10$estimate, zlim = c(0, 500), main = '10th Degree')
+plot(43560 * ex_p11$estimate, zlim = c(0, 500), main = '11th Degree')
+plot(43560 * ex_p12$estimate, zlim = c(0, 500), main = '12th Degree')
+plot(43560 * ex_kde * area(ex_ppp_full) / area(ex_ppp), zlim = c(0, 500),
      main = 'Kernel Density')
 @
 
-<<polyse1, cache = TRUE, dependson = 'polyfit1', fig.width = 6, fig.height = 8, fig.pos = 'p', fig.cap = ''>>=
+<<polyse1, fig.width = 6, fig.height = 8, fig.pos = 'p', fig.cap = 'Log standard errors and relative standard errors for six of the polynomial models.'>>=
 par(mfrow = c(4, 3), mar = c(1, 0, 2, 3), las = 2, cex = 1)
 plot(log(43560 * ex_p2$se), main = '2nd Degree\nlog(SE)')
 plot(log(43560 * ex_p4$se), main = '4th Degree\nlog(SE)')
@@ -499,6 +514,8 @@ plot(ex_p8$se / ex_p8$estimate, main = '8th Degree\nRSE')
 plot(ex_p10$se / ex_p10$estimate, main = '10th Degree\nRSE')
 plot(ex_p12$se / ex_p12$estimate, main = '12th Degree\nRSE')
 @
+
+\section{Difficulties with Implementation}
 
 \texttt{plot} doesn't work, and \texttt{predict} doesn't work on the original
 window
