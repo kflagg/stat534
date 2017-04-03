@@ -427,7 +427,7 @@ a uniform distribution over the observed region. The coordinates \(x\) and
 \(y\) are standardized to have mean 0 and variance 1 in order to reduce
 numerical instability for the larger exponents.
 
-<<polyfit1, cache = TRUE, dependson = 'sim2000obs', warning = FALSE>>=
+<<quad1, cache = TRUE, dependson = 'sim2000obs', warning = FALSE>>=
 # Do a simple fit where spatstat sets up the quadrature so we can see where it
 # puts the dummy points.
 ex_fit1 <- ppm(ex_ppp ~ x + y)
@@ -435,19 +435,43 @@ ex_fit1 <- ppm(ex_ppp ~ x + y)
 # Create a quadrature scheme manually to ensure there are dummy points on
 # each transect.
 ex_Q <- quad(data = ex_ppp, dummy = runifpoint(500000, Window(ex_ppp)))
+@
 
+<<polyfit2, cache = TRUE, dependson = 'quad1'>>=
 ex_fit2 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 2), correction = 'iso')
+@
+<<polyfit3, cache = TRUE, dependson = 'quad1'>>=
 ex_fit3 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 3), correction = 'iso')
+@
+<<polyfit4, cache = TRUE, dependson = 'quad1'>>=
 ex_fit4 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 4), correction = 'iso')
+@
+<<polyfit5, cache = TRUE, dependson = 'quad1'>>=
 ex_fit5 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 5), correction = 'iso')
+@
+<<polyfit6, cache = TRUE, dependson = 'quad1'>>=
 ex_fit6 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 6), correction = 'iso')
+@
+<<polyfit7, cache = TRUE, dependson = 'quad1'>>=
 ex_fit7 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 7), correction = 'iso')
+@
+<<polyfit8, cache = TRUE, dependson = 'quad1'>>=
 ex_fit8 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 8), correction = 'iso')
+@
+<<polyfit9, cache = TRUE, dependson = 'quad1'>>=
 ex_fit9 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 9), correction = 'iso')
+@
+<<polyfit10, cache = TRUE, dependson = 'quad1'>>=
 ex_fit10 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 10), correction = 'iso')
+@
+<<polyfit11, cache = TRUE, dependson = 'quad1'>>=
 ex_fit11 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 11), correction = 'iso')
+@
+<<polyfit12, cache = TRUE, dependson = 'quad1'>>=
 ex_fit12 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 12), correction = 'iso')
+@
 
+<<polypred1>>=
 # Get predictions and SEs.
 ex_p2 <- predict(ex_fit2, window = site_window, se = TRUE)
 ex_p3 <- predict(ex_fit3, window = site_window, se = TRUE)
@@ -461,12 +485,26 @@ ex_p10 <- predict(ex_fit10, window = site_window, se = TRUE)
 ex_p11 <- predict(ex_fit11, window = site_window, se = TRUE)
 ex_p12 <- predict(ex_fit12, window = site_window, se = TRUE)
 
-ex_kde <- density(ex_ppp_full)
+ex_kde <- density(ex_ppp_full) * area(ex_ppp_full) / area(ex_ppp)
 @
 
 Figure~\ref{fig:polyplot1} shows the predicted intensity surfaces for the
-polynomial models, along with a kernel density estimate for comparison. The
-2nd-order polynomial surface is too simple to capture the bimodal surface,
+polynomial models, along with a kernel density estimate for comparison.
+500,000 dummy points do not seem to be enough for the likelihood
+approximation to converge to the Poisson likelihood, but the predicted
+intensity values are reasonable (discussed further in the next section).
+Because of the lack of convergence, I do not do any formal model comparisons.
+
+The second- and third-order polynomial models are too simple to capture the
+bimodality of the true surface, but the fourth- and higher-order models have
+large, high-intensity regions that coincide with both concentrated munitions
+use regions of the true surface. Up until degree nine, the polynomial models
+are smoother than the kernel intensity estimate. The ninth-, tenth-, and
+eleventh-degree models all look similar to the kernel intensity estimate,
+while the twelfth-degree model is noticeably noisier. Edge effects are
+noticeable for \(p \geq 4\) with some predictions along the boundary abruptly
+dropping to zero or increasing to hundreds of anomalies per acre higher than
+any of the predictions in the interior of the region.
 
 The kernel density estimate is computed using the \texttt{spatstat}'s default
 ``simple rule of thumb'' to select the smoothing bandwidth. Because the
@@ -476,49 +514,68 @@ along the transects. As it turns out, the default bandwith is large enough to
 smooth across multiple transects so the ridges do not appear. However, the
 kernel density estimate is biased low because not all anomalies are observed;
 I divide the estimate by the proportion of the area observed as an approximate
-bias correction.
+bias correction and the result is a surprisingly reasonable intensity map.
 
 <<polyplot1, fig.width = 6, fig.height = 8, fig.pos = 'p', fig.cap = 'Predicted intensity surfaces for eleven polynomial models, and a kernel density estimate for comparision.'>>=
 par(mfrow = c(4, 3), mar = c(1, 0, 1.2, 3), las = 2, cex = 1)
 
 # Multiply predictions by 43560 to convert from anomalies per square foot
 # to anomalies per acre.
-plot(43560 * ex_p2$estimate, zlim = c(0, 500), main = '2nd Degree')
-plot(43560 * ex_p3$estimate, zlim = c(0, 500), main = '3rd Degree')
-plot(43560 * ex_p4$estimate, zlim = c(0, 500), main = '4th Degree')
-plot(43560 * ex_p5$estimate, zlim = c(0, 500), main = '5th Degree')
-plot(43560 * ex_p6$estimate, zlim = c(0, 500), main = '6th Degree')
-plot(43560 * ex_p7$estimate, zlim = c(0, 500), main = '7th Degree')
-plot(43560 * ex_p8$estimate, zlim = c(0, 500), main = '8th Degree')
-plot(43560 * ex_p9$estimate, zlim = c(0, 500), main = '9th Degree')
-plot(43560 * ex_p10$estimate, zlim = c(0, 500), main = '10th Degree')
-plot(43560 * ex_p11$estimate, zlim = c(0, 500), main = '11th Degree')
-plot(43560 * ex_p12$estimate, zlim = c(0, 500), main = '12th Degree')
-plot(43560 * ex_kde * area(ex_ppp_full) / area(ex_ppp), zlim = c(0, 500),
-     main = 'Kernel Density')
+plot(43560 * ex_p2$estimate, zlim = c(0, 300), main = '2nd Degree')
+plot(43560 * ex_p3$estimate, zlim = c(0, 300), main = '3rd Degree')
+plot(43560 * ex_p4$estimate, zlim = c(0, 300), main = '4th Degree')
+plot(43560 * ex_p5$estimate, zlim = c(0, 300), main = '5th Degree')
+plot(43560 * ex_p6$estimate, zlim = c(0, 300), main = '6th Degree')
+plot(43560 * ex_p7$estimate, zlim = c(0, 300), main = '7th Degree')
+plot(43560 * ex_p8$estimate, zlim = c(0, 300), main = '8th Degree')
+plot(43560 * ex_p9$estimate, zlim = c(0, 300), main = '9th Degree')
+plot(43560 * ex_p10$estimate, zlim = c(0, 300), main = '10th Degree')
+plot(43560 * ex_p11$estimate, zlim = c(0, 300), main = '11th Degree')
+plot(43560 * ex_p12$estimate, zlim = c(0, 300), main = '12th Degree')
+plot(43560 * ex_kde, zlim = c(0, 500), main = 'Kernel Density')
 @
 
-<<polyse1, fig.width = 6, fig.height = 8, fig.pos = 'p', fig.cap = 'Log standard errors and relative standard errors for six of the polynomial models.'>>=
-par(mfrow = c(4, 3), mar = c(1, 0, 2, 3), las = 2, cex = 1)
+Figure~\ref{fig:polyse1} shows the log-scale standard errors for six of the
+polynomial models. For all models except the twelfth-degree model, the
+standard error is low across most of the site but high along the boundary. The
+standard errors increase with the degree of the model. This is expected and
+resonable because locations in the interior of the region have the most nearby
+anomalies and dummy points, and predictions from more complex models depend on
+more estimated parameters.
+
+If the true number of high-intensity regions was known to be 2, any polynomial
+model with \(p \geq 4\) (or the kernel density estimate) would provide an
+accurate (if imprecise) indication of where to focus the UXO remediation
+effort. However, the plots alone provide little indication of which model has
+the ideal level of complexity, but there are several practical difficulties
+with fitting these models that should be sorted out before I would be
+comfortable making recommendations about how to select an optimal model for
+prediction outside the observed subregion.
+
+<<polyse1, fig.width = 6, fig.height = 4, fig.pos = 't', fig.cap = 'Log standard errors for six of the polynomial models.'>>=
+par(mfrow = c(2, 3), mar = c(1, 0, 2, 3), las = 2, cex = 1)
 plot(log(43560 * ex_p2$se), main = '2nd Degree\nlog(SE)')
 plot(log(43560 * ex_p4$se), main = '4th Degree\nlog(SE)')
 plot(log(43560 * ex_p6$se), main = '6th Degree\nlog(SE)')
-plot(ex_p2$se / ex_p2$estimate, main = '2nd Degree\nRSE')
-plot(ex_p4$se / ex_p4$estimate, main = '4th Degree\nRSE')
-plot(ex_p6$se / ex_p6$estimate, main = '6th Degree\nRSE')
-
 plot(log(43560 * ex_p8$se), main = '8th Degree\nlog(SE)')
 plot(log(43560 * ex_p10$se), main = '10th Degree\nlog(SE)')
 plot(log(43560 * ex_p12$se), main = '12th Degree\nlog(SE)')
-plot(ex_p8$se / ex_p8$estimate, main = '8th Degree\nRSE')
-plot(ex_p10$se / ex_p10$estimate, main = '10th Degree\nRSE')
-plot(ex_p12$se / ex_p12$estimate, main = '12th Degree\nRSE')
 @
 
 \section{Difficulties with Implementation}
 
 \texttt{plot} doesn't work, and \texttt{predict} doesn't work on the original
 window
+
+<<dummy>>=
+par(mfrow = c(1, 2), mar = c(1, 0, 1, 0), cex = 1)
+plot(ex_fit1$Q$dummy, pch = '.', border = NA,
+     main = 'Default Dummy Points')
+plot(site_window, add = TRUE)
+plot(ex_Q$dummy, pch = '.', border = NA,
+     main = 'Manual Dummy Points')
+plot(site_window, add = TRUE)
+@
 
 
 \section{Discussion and Conclusion}
@@ -540,10 +597,86 @@ the site, that region must be observed!
 how much of the region do you need to observe to trust your model?
 
 
-\appendix
-\section{R Code Appendix}
-
-
 \printbibliography
+
+
+\pagebreak
+\appendix
+\section*{R Code Appendix}
+
+<<packages, echo = TRUE, eval = FALSE>>=
+@
+\vspace{-20pt}
+<<hw4_sim, echo = TRUE, eval = FALSE>>=
+@
+\vspace{-20pt}
+<<hw4_fit_full, echo = TRUE, eval = FALSE>>=
+@
+\vspace{-20pt}
+<<hw4_fit_s, echo = TRUE, eval = FALSE>>=
+@
+\vspace{-20pt}
+<<hw4_plot, echo = TRUE, eval = FALSE>>=
+@
+\vspace{-20pt}
+<<hw4_fitplot, echo = TRUE, eval = FALSE>>=
+@
+\vspace{-20pt}
+<<uxoexampledata, echo = TRUE, eval = FALSE>>=
+@
+\vspace{-20pt}
+<<truth, echo = TRUE, eval = FALSE>>=
+@
+\vspace{-20pt}
+<<sim2000obs, echo = TRUE, eval = FALSE>>=
+@
+\vspace{-20pt}
+<<quad1, echo = TRUE, eval = FALSE>>=
+@
+\vspace{-20pt}
+<<polyfit2, echo = TRUE, eval = FALSE>>=
+@
+\vspace{-30pt}
+<<polyfit3, echo = TRUE, eval = FALSE>>=
+@
+\vspace{-30pt}
+<<polyfit4, echo = TRUE, eval = FALSE>>=
+@
+\vspace{-30pt}
+<<polyfit5, echo = TRUE, eval = FALSE>>=
+@
+\vspace{-30pt}
+<<polyfit6, echo = TRUE, eval = FALSE>>=
+@
+\vspace{-30pt}
+<<polyfit7, echo = TRUE, eval = FALSE>>=
+@
+\vspace{-30pt}
+<<polyfit8, echo = TRUE, eval = FALSE>>=
+@
+\vspace{-30pt}
+<<polyfit9, echo = TRUE, eval = FALSE>>=
+@
+\vspace{-30pt}
+<<polyfit10, echo = TRUE, eval = FALSE>>=
+@
+\vspace{-30pt}
+<<polyfit11, echo = TRUE, eval = FALSE>>=
+@
+\vspace{-30pt}
+<<polyfit12, echo = TRUE, eval = FALSE>>=
+@
+\vspace{-20pt}
+<<polypred1, echo = TRUE, eval = FALSE>>=
+@
+\vspace{-20pt}
+<<polyplot1, echo = TRUE, eval = FALSE>>=
+@
+\vspace{-20pt}
+<<polyse1, echo = TRUE, eval = FALSE>>=
+@
+\vspace{-20pt}
+<<dummy, echo = TRUE, eval = FALSE>>=
+@
 
 \end{document}
