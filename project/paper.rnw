@@ -394,7 +394,7 @@ ex_win <- intersect.owin(site_window,
   })))
 ex_ppp <- ppp(ex_anom$x, ex_anom$y, window = ex_win)
 
-# Create a ppp object the uses the full region as the window.
+# Create a ppp object that uses the full region as the window.
 ex_ppp_full <- ppp(ex_anom$x, ex_anom$y, window = site_window)
 
 par(mar = c(0, 0, 1, 0))
@@ -606,76 +606,76 @@ how much of the region do you need to observe to trust your model?
 
 <<packages, echo = TRUE, eval = FALSE>>=
 @
-\vspace{-20pt}
+\vspace{-15pt}
 <<hw4_sim, echo = TRUE, eval = FALSE>>=
 @
-\vspace{-20pt}
+\vspace{-15pt}
 <<hw4_fit_full, echo = TRUE, eval = FALSE>>=
 @
-\vspace{-20pt}
+\vspace{-15pt}
 <<hw4_fit_s, echo = TRUE, eval = FALSE>>=
 @
-\vspace{-20pt}
+\vspace{-15pt}
 <<hw4_plot, echo = TRUE, eval = FALSE>>=
 @
-\vspace{-20pt}
+\vspace{-15pt}
 <<hw4_fitplot, echo = TRUE, eval = FALSE>>=
 @
-\vspace{-20pt}
+\vspace{-15pt}
 <<uxoexampledata, echo = TRUE, eval = FALSE>>=
 @
-\vspace{-20pt}
+\vspace{-15pt}
 <<truth, echo = TRUE, eval = FALSE>>=
 @
-\vspace{-20pt}
+\vspace{-15pt}
 <<sim2000obs, echo = TRUE, eval = FALSE>>=
 @
-\vspace{-20pt}
+\vspace{-15pt}
 <<quad1, echo = TRUE, eval = FALSE>>=
 @
-\vspace{-20pt}
+\vspace{-15pt}
 <<polyfit2, echo = TRUE, eval = FALSE>>=
 @
-\vspace{-30pt}
+\vspace{-25pt}
 <<polyfit3, echo = TRUE, eval = FALSE>>=
 @
-\vspace{-30pt}
+\vspace{-25pt}
 <<polyfit4, echo = TRUE, eval = FALSE>>=
 @
-\vspace{-30pt}
+\vspace{-25pt}
 <<polyfit5, echo = TRUE, eval = FALSE>>=
 @
-\vspace{-30pt}
+\vspace{-25pt}
 <<polyfit6, echo = TRUE, eval = FALSE>>=
 @
-\vspace{-30pt}
+\vspace{-25pt}
 <<polyfit7, echo = TRUE, eval = FALSE>>=
 @
-\vspace{-30pt}
+\vspace{-25pt}
 <<polyfit8, echo = TRUE, eval = FALSE>>=
 @
-\vspace{-30pt}
+\vspace{-25pt}
 <<polyfit9, echo = TRUE, eval = FALSE>>=
 @
-\vspace{-30pt}
+\vspace{-25pt}
 <<polyfit10, echo = TRUE, eval = FALSE>>=
 @
-\vspace{-30pt}
+\vspace{-25pt}
 <<polyfit11, echo = TRUE, eval = FALSE>>=
 @
-\vspace{-30pt}
+\vspace{-25pt}
 <<polyfit12, echo = TRUE, eval = FALSE>>=
 @
-\vspace{-20pt}
+\vspace{-15pt}
 <<polypred1, echo = TRUE, eval = FALSE>>=
 @
-\vspace{-20pt}
+\vspace{-15pt}
 <<polyplot1, echo = TRUE, eval = FALSE>>=
 @
-\vspace{-20pt}
+\vspace{-15pt}
 <<polyse1, echo = TRUE, eval = FALSE>>=
 @
-\vspace{-20pt}
+\vspace{-15pt}
 <<dummy, echo = TRUE, eval = FALSE>>=
 @
 

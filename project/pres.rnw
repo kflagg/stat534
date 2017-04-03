@@ -410,19 +410,42 @@ instability for large \(p\)
 <<polyfit, warning = FALSE, cache = TRUE, dependson = 'uxoexampledata'>>=
 ex_fit1 <- ppm(ex_ppp ~ x + y)
 ex_Q <- quad(data = ex_ppp, dummy = runifpoint(500000, Window(ex_ppp)))
-
+@
+<<polyfit2, cache = TRUE, dependson = 'polyfit'>>=
 ex_fit2 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 2), correction = 'iso')
+@
+<<polyfit3, cache = TRUE, dependson = 'polyfit'>>=
 ex_fit3 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 3), correction = 'iso')
+@
+<<polyfit4, cache = TRUE, dependson = 'polyfit'>>=
 ex_fit4 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 4), correction = 'iso')
+@
+<<polyfit5, cache = TRUE, dependson = 'polyfit'>>=
 ex_fit5 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 5), correction = 'iso')
+@
+<<polyfit6, cache = TRUE, dependson = 'polyfit'>>=
 ex_fit6 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 6), correction = 'iso')
+@
+<<polyfit7, cache = TRUE, dependson = 'polyfit'>>=
 ex_fit7 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 7), correction = 'iso')
+@
+<<polyfit8, cache = TRUE, dependson = 'polyfit'>>=
 ex_fit8 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 8), correction = 'iso')
+@
+<<polyfit9, cache = TRUE, dependson = 'polyfit'>>=
 ex_fit9 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 9), correction = 'iso')
+@
+<<polyfit10, cache = TRUE, dependson = 'polyfit'>>=
 ex_fit10 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 10), correction = 'iso')
+@
+<<polyfit11, cache = TRUE, dependson = 'polyfit'>>=
 ex_fit11 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 11), correction = 'iso')
+@
+<<polyfit12, cache = TRUE, dependson = 'polyfit'>>=
 ex_fit12 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 12), correction = 'iso')
+@
 
+<<polypred>>=
 ex_p2 <- predict(ex_fit2, window = site_window, se = TRUE)
 ex_p3 <- predict(ex_fit3, window = site_window, se = TRUE)
 ex_p4 <- predict(ex_fit4, window = site_window, se = TRUE)
@@ -436,7 +459,7 @@ ex_p11 <- predict(ex_fit11, window = site_window, se = TRUE)
 ex_p12 <- predict(ex_fit12, window = site_window, se = TRUE)
 @
 
-<<resplots1, cache = TRUE, dependson = 'polyfit'>>=
+<<resplots1>>=
 par(mfrow = c(2, 3), mar = c(1, 0, 1.2, 3), las = 2, cex = 1)
 plot(43560 * ex_p2$estimate, main = '2nd Degree Polynom')
 plot(43560 * ex_p3$estimate, main = '3rd Degree Polynom')
@@ -452,7 +475,7 @@ plot(43560 * ex_p7$estimate, main = '7th Degree Polynom')
 \begin{frame}
 \frametitle{Extrapolated Surfaces}
 
-<<resplots2, cache = TRUE, dependson = 'polyfit'>>=
+<<resplots2>>=
 par(mfrow = c(2, 3), mar = c(1, 0, 1.2, 3), las = 2, cex = 1)
 plot(43560 * ex_p8$estimate, main = '8th Degree Polynom')
 plot(43560 * ex_p9$estimate, main = '9th Degree Polynom')
