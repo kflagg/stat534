@@ -56,7 +56,7 @@ set.seed(83534)
 One little-studied application of inhomogeneous point process intensity
 estimation is the use of an intensity surface estimated from events in a
 subregion to predict the intensity over the entire region of interest. This
-procedure would be relevant whenver it is known or suspected that some type of
+procedure would be relevant whenever it is known or suspected that some type of
 plant, animal, or other item occurs in the region, and the goal of the
 analysis is to map the trend in where these tend to be located rather than
 estimate parameters of some process at work across hypothetical replicates of
@@ -81,7 +81,7 @@ remediation, where the intensity surface of inert munitions fragments is
 used to identify the locations of targets so that the search for UXO can be
 focused on the sections of the site most likely to contain it. The anomalies
 are only observed when detection equipment passes directly over them, but the
-project leaders are concerened with finding UXO and do not want to waste
+project leaders are concerned with finding UXO and do not want to waste
 resources finding every inert fragment that could be found by metal detectors.
 The most common data collection method is to take a systematic sample of
 straight-line transects and observe anomalies in rectangular regions centered
@@ -110,7 +110,7 @@ The log-likelihood of an unmarked Poisson process on a region \(D\) with
 intensity \(\lambda(\mathbf{s})\) is found by conditioning on the number of
 events in the following manner. The number of events in \(D\) follows a
 Poisson distribution with mean \(\mu=\int_{D}\lambda(\mathbf{s})d\mathbf{s}\).
-Given that \(n\) events occured, their locations \(\mathbf{s}_{1},\dots,
+Given that \(n\) events occurred, their locations \(\mathbf{s}_{1},\dots,
 \mathbf{s}_{n}\) are independent and identically distributed with density
 \(\lambda(\mathbf{s})/\mu\). Then the log-likelihood of the intensity is
 \begin{align*}
@@ -141,7 +141,7 @@ with generalized linear model (GLM) software using quadratic approximations to
 the likelihood, even generalizing to other link functions besides the log link.
 Their method is based on partitioning \(D\) such that each subset in the
 partition contains at most one event, and then maximizing a weighted
-pseudolikelihood based upon a binomial or Poission distribution for the count
+pseudolikelihood based upon a binomial or Poisson distribution for the count
 of events in each subset. They comment that the covariance matrices produced
 by standard GLM software under this method are reasonable approximations to
 the correct covariance matrices that would be derived from the true likelihood
@@ -330,11 +330,11 @@ for this project. The site is a
 with homogeneous Poisson process producing background anomalies with an
 intensity of 100 anomalies per acre, and two regions of concentrated munitions
 use generated as Poisson processes with bivariate Gaussian intensity. The
-total intesnsity at the center of each concentrated munitions use region is
+total intensity at the center of each concentrated munitions use region is
 300 anomalies per acre~(Figure~\ref{fig:truth}).
 
 <<truth, cache = TRUE, dependson = 'uxoexampledata', fig.width = 4, fig.pos = 't', fig.cap = 'True intensity at the simulated UXO site.'>>=
-# Bivariate normal intensity function that I originalally wrote for my
+# Bivariate normal intensity function that I originally wrote for my
 # writing project, parameterized in terms of the major and minor axes scales
 # and the angle of the major axis from horizontal.
 #   a is horizontal axis, b is vertical axis, r is rotation angle
@@ -381,7 +381,7 @@ mtext('Anomalies per Acre', 4, line = 2)
 
 <<sim2000obs, cache = TRUE, dependson = 'uxoexampledata', fig.pos = 't', fig.cap = 'Observed geomagnetic anomalies from one realization of the UXO site. The transects are not shown on this plot because they would obscure the points.'>>=
 # Load the sample data used in my writing project.
-# The anomaly file contains the locations of the observed anamolies and the
+# The anomaly file contains the locations of the observed anomalies and the
 # cog file contains the course-over-ground waypoints on the transects.
 ex_anom <- read.csv('easy_sample_tTA2_p200_bg100_fg200_rep2000.anomaly')
 ex_path <- read.csv('easy_sample_tTA2_p200_bg100_fg200_rep2000.cog')
@@ -510,7 +510,7 @@ The kernel density estimate is computed using \texttt{spatstat}'s default
 ``simple rule of thumb'' to select the smoothing bandwidth. Because the
 anomalies located more than three feet from a transect were not observed, I
 would expect the kernel density estimate to show ridges of high intensity
-along the transects. As it turns out, the default bandwith is large enough to
+along the transects. As it turns out, the default bandwidth is large enough to
 smooth across multiple transects so the ridges do not appear. However, the
 kernel density estimate is biased low because not all anomalies are observed;
 I divide the estimate by the proportion of the area observed as an approximate
@@ -539,7 +539,7 @@ Figure~\ref{fig:polyse1} shows the log-scale standard errors for six of the
 polynomial models. For all models except the twelfth-degree model, the
 standard error is low across most of the site but high along the boundary. The
 standard errors increase with the degree of the model. This is expected and
-resonable because locations in the interior of the region have the most nearby
+reasonable because locations in the interior of the region have the most nearby
 anomalies and dummy points, and predictions from more complex models depend on
 more estimated parameters.
 
@@ -587,7 +587,7 @@ grids of locations for dummy points and predictions. It finds a bounding box
 for the region and places grid cells on a lattice across the bounding box, but
 its grids are so coarse that most of my transects do not have cells centered
 on them. It attempts to create an \(80 \times 80\) grid of dummy points, but
-the only useable points are 160 points on two transects; all others are
+the only usable points are 160 points on two transects; all others are
 discarded~(Figure~\ref{fig:dummy}, left). Attempting to fit models in
 \texttt{ppm} using these dummy points results in an error.
 
@@ -600,7 +600,7 @@ only in the 160 grid cells that happen to lie inside the observed region.
 Fortunately, the \texttt{predict} function behaves when the whole site is
 specified as the prediction window.
 
-The biggest disappoinment of using \texttt{spatstat} to fit these models is
+The biggest disappointment of using \texttt{spatstat} to fit these models is
 that models with splines cannot be plotted. The \texttt{ppm} functions
 estimates the parameters without any apparent trouble, but the \texttt{plot}
 and \texttt{predict} functions give errors because they do not know how to
