@@ -11,7 +11,7 @@
 \newcommand\assignment{Stat 534 Project: \\
 Extrapolation from Poisson Process Intensity Surface Models}
 \newcommand\myname{Kenny Flagg}
-\newcommand\duedate{April 2, 2017}
+\newcommand\duedate{April 3, 2017}
 
 \pagestyle{fancy}
 \lhead{Stat 534 Project}
@@ -372,7 +372,7 @@ intense.im <- im(t(intense.mat), x, y, unitname = c('foot', 'feet'))
 
 par(mar = c(0, 0, 1, 3))
 plot(intense.im, main = 'True Intensity Surface',
-     border = NA, zlim = c(100, 300), las = 2)
+     border = NA, zlim = c(0, 300), las = 2)
 plot(setminus.owin(owin(c(1556870, 1564495), c(535421, 541130),
                         unitname = c('foot', 'feet')),
      site_window), col = 'white', border = 'white', lwd = 2, add = TRUE)
@@ -471,7 +471,7 @@ ex_fit11 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 11), correction = 'iso')
 ex_fit12 <- ppm(ex_Q, ~ polynom(scale(x), scale(y), 12), correction = 'iso')
 @
 
-<<polypred1>>=
+<<polypred1, cache = TRUE, dependson = 'quad1'>>=
 # Get predictions and SEs.
 ex_p2 <- predict(ex_fit2, window = site_window, se = TRUE)
 ex_p3 <- predict(ex_fit3, window = site_window, se = TRUE)
@@ -506,7 +506,7 @@ noticeable for \(p \geq 4\) with some predictions along the boundary abruptly
 dropping to zero or increasing to hundreds of anomalies per acre higher than
 any of the predictions in the interior of the region.
 
-The kernel density estimate is computed using the \texttt{spatstat}'s default
+The kernel density estimate is computed using \texttt{spatstat}'s default
 ``simple rule of thumb'' to select the smoothing bandwidth. Because the
 anomalies located more than three feet from a transect were not observed, I
 would expect the kernel density estimate to show ridges of high intensity
@@ -516,13 +516,13 @@ kernel density estimate is biased low because not all anomalies are observed;
 I divide the estimate by the proportion of the area observed as an approximate
 bias correction and the result is a surprisingly reasonable intensity map.
 
-<<polyplot1, fig.width = 6, fig.height = 8, fig.pos = 'p', fig.cap = 'Predicted intensity surfaces for eleven polynomial models, and a kernel density estimate for comparision.'>>=
+<<polyplot1, fig.width = 6, fig.height = 8, fig.pos = 'p', fig.cap = 'Predicted intensity surfaces for eleven polynomial models, and a kernel density estimate for comparision. Note that the 4th- through 12th-degree polynomial models have the same color scale, while the 2nd- and 3rd-degree models and the kernel density estimate use different color scales for visibility.'>>=
 par(mfrow = c(4, 3), mar = c(1, 0, 1.2, 3), las = 2, cex = 1)
 
 # Multiply predictions by 43560 to convert from anomalies per square foot
 # to anomalies per acre.
-plot(43560 * ex_p2$estimate, zlim = c(0, 300), main = '2nd Degree')
-plot(43560 * ex_p3$estimate, zlim = c(0, 300), main = '3rd Degree')
+plot(43560 * ex_p2$estimate, main = '2nd Degree')
+plot(43560 * ex_p3$estimate, main = '3rd Degree')
 plot(43560 * ex_p4$estimate, zlim = c(0, 300), main = '4th Degree')
 plot(43560 * ex_p5$estimate, zlim = c(0, 300), main = '5th Degree')
 plot(43560 * ex_p6$estimate, zlim = c(0, 300), main = '6th Degree')
@@ -532,7 +532,7 @@ plot(43560 * ex_p9$estimate, zlim = c(0, 300), main = '9th Degree')
 plot(43560 * ex_p10$estimate, zlim = c(0, 300), main = '10th Degree')
 plot(43560 * ex_p11$estimate, zlim = c(0, 300), main = '11th Degree')
 plot(43560 * ex_p12$estimate, zlim = c(0, 300), main = '12th Degree')
-plot(43560 * ex_kde, zlim = c(0, 500), main = 'Kernel Density')
+plot(43560 * ex_kde, main = 'Kernel Density')
 @
 
 Figure~\ref{fig:polyse1} shows the log-scale standard errors for six of the
@@ -552,7 +552,7 @@ with fitting these models that should be sorted out before I would be
 comfortable making recommendations about how to select an optimal model for
 prediction outside the observed subregion.
 
-<<polyse1, fig.width = 6, fig.height = 4, fig.pos = 't', fig.cap = 'Log standard errors for six of the polynomial models.'>>=
+<<polyse1, fig.width = 6, fig.height = 4, fig.pos = 'p', fig.cap = 'Log standard errors for six of the polynomial models.'>>=
 par(mfrow = c(2, 3), mar = c(1, 0, 2, 3), las = 2, cex = 1)
 plot(log(43560 * ex_p2$se), main = '2nd Degree\nlog(SE)')
 plot(log(43560 * ex_p4$se), main = '4th Degree\nlog(SE)')
@@ -562,12 +562,8 @@ plot(log(43560 * ex_p10$se), main = '10th Degree\nlog(SE)')
 plot(log(43560 * ex_p12$se), main = '12th Degree\nlog(SE)')
 @
 
-\section{Difficulties with Implementation}
 
-\texttt{plot} doesn't work, and \texttt{predict} doesn't work on the original
-window
-
-<<dummy>>=
+<<dummy, fig.pos = 'p', fig.cap = 'The default dummy points selected by \\texttt{spatstat} (left) and the 500,000 random uniform dummy points that I use to fit the models.'>>=
 par(mfrow = c(1, 2), mar = c(1, 0, 1, 0), cex = 1)
 plot(ex_fit1$Q$dummy, pch = '.', border = NA,
      main = 'Default Dummy Points')
@@ -578,23 +574,78 @@ plot(site_window, add = TRUE)
 @
 
 
+\section{Difficulties with Implementation}
+
+I encountered many difficulties in fitting these models that suggest the
+methods and software are not yet developed well enough to make them useful for
+working with such sparsely sampled data. Most of these difficulties resulted
+from the implementation with \texttt{spatstat}, but several were computational
+issues.
+
+The troubles with \texttt{spatstat} largely come from how the package sets up
+grids of locations for dummy points and predictions. It finds a bounding box
+for the region and places grid cells on a lattice across the bounding box, but
+its grids are so coarse that most of my transects do not have cells centered
+on them. It attempts to create an \(80 \times 80\) grid of dummy points, but
+the only useable points are 160 points on two transects; all others are
+discarded~(Figure~\ref{fig:dummy}, left). Attempting to fit models in
+\texttt{ppm} using these dummy points results in an error.
+
+The \texttt{ppm} function fits models successfully when using the 500,000
+dummy points that I draw from a uniform distribution~(Figure~\ref{fig:dummy},
+right). However, the \texttt{plot} method gives an error about infinite
+values, while the \texttt{predict} method by default uses the same
+\(80 \times 80\) grid used for the default dummy points and makes predictions
+only in the 160 grid cells that happen to lie inside the observed region.
+Fortunately, the \texttt{predict} function behaves when the whole site is
+specified as the prediction window.
+
+The biggest disappoinment of using \texttt{spatstat} to fit these models is
+that models with splines cannot be plotted. The \texttt{ppm} functions
+estimates the parameters without any apparent trouble, but the \texttt{plot}
+and \texttt{predict} functions give errors because they do not know how to
+interpret the smooth terms in the model formula.
+
+All of the above difficulties are software issues that could be fixed. I also
+found two computational limitations that will not be remedied as easily.
+First, even after rescaling the coordinates, \(\mathbf{X}^{T}\mathbf{X}\)
+cannot be inverted because of numerical instabilities when \(p \geq 18\). Such
+models are more complicated than needed for my example site, but it is
+important to note that a limit on polynomial model complexity exists.
+
+Second, choosing dummy points is hard. I initially used 1,000 points, but that
+was not enough and the intensity values predicted by those models were in the
+tens of thousands. It is not apparent that the 500,000 randomly-selected dummy
+points I ultimately used are optimal, either. \textcite{wartonshepherd}
+discuss dummy point selection when the entire region of interest is observed,
+suggesting that the number of dummy points be increased until the maximized
+log-likelihood reaches approximate convergence. They use 86,227 points for
+their example. I used trial-and-error to increase the number of dummy points,
+fitting a couple of my models using 600,000 and then 1,000,000 dummy points;
+the maximized log-likelihood changed by thousands. I settled on 500,000
+because that was the smallest number I tried that yielded predicted
+intensities of the correct magnitude. With that many points, each model takes
+about a minute to fit; models with enough dummy points to accurately
+approximate the likelihood would likely take much longer to estimate.
+
+
+\pagebreak
 \section{Discussion and Conclusion}
 
-smallish SEs outside observed region because of faith in the model form --
-need model checking
-
-What geostatisticians and ordnance engineers will notice is that that SEs
-don't reflect added uncertainty about unobserved regions.
-Note kriging accounts for lack of model fit by autocorrelated errors --
-prediction SEs increase far from obs because of lack of info about local
-deviations from mean. For Poisson process, the events are independent given
-the intensity so local variation is not helpful for prediction. Thus we are
-heavily reliant on the correctness of the model form and the
-representativeness of the observed subregion, so model checking is crucial.
-If there is prior uncertainty about the form of the trend in a certain part of
-the site, that region must be observed!
-
-how much of the region do you need to observe to trust your model?
+Spatial point process intensity surface models are an intriguing option for
+modeling partially-observed inhomogeneous point processes, and polynomial
+models can approximate complex surfaces. However, these models are not
+yet ready for application to UXO data because the software is not quite there
+(yet) and they require heavy computing power. Several avenues for future work
+are available, such as seeking more efficient ways to approximate the
+likelihood and compute parameter estimates, and further exploring how to
+choose dummy points. Then, the next step might be to study whether familiar
+model selection tools like AIC or tests of predictive ability are suitable
+assuming the likelihood approximation is successful. Presently, it seems
+necessary either to observe more of the site area than covered by typical UXO
+sampling plans, or work with a model fit that is a rough approximation at
+best. Thus the biggest open question might be how much of the region do you
+need to observe to trust your model?
 
 
 \printbibliography
