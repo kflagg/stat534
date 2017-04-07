@@ -1,0 +1,231 @@
+\documentclass[11pt]{article}
+\usepackage{fullpage,graphicx,float,amsmath,enumitem,fancyhdr}
+
+\setlist{parsep=5.5pt}
+\setlength{\parindent}{0pt}
+
+\newcommand\assignment{Stat 534 Homework 9}
+\newcommand\myname{Kenny Flagg}
+\newcommand\duedate{April 7, 2017}
+
+\pagestyle{fancy}
+\lhead{\assignment}
+\chead{\duedate}
+\rhead{\myname}
+\setlength{\headheight}{18pt}
+\setlength{\headsep}{2pt}
+
+\title{\assignment}
+\author{\myname}
+\date{\duedate}
+
+\begin{document}
+\maketitle
+
+<<setup, echo = FALSE, message = FALSE, cache = FALSE>>=
+library(knitr)
+library(extrafont)
+opts_chunk$set(echo = TRUE, comment = NA, message = FALSE,
+               show.signif.stars = FALSE,
+               fig.align = 'center', fig.width = 6.5, fig.height = 4,
+               fig.pos = 'H', size = 'footnotesize', dev = 'pdf',
+               dev.args = list(family = 'CM Roman', pointsize = 11))
+knit_theme$set('print')
+
+library(nlme)
+library(MASS)
+library(geoR)
+
+library(xtable)
+options(xtable.floating = FALSE,
+        xtable.sanitize.rownames.function = function(x) x,
+        xtable.sanitize.colnames.function = function(x) x,
+        width = 80, scipen = 2, show.signif.stars = FALSE)
+
+set.seed(92387)
+@
+
+\begin{enumerate}
+
+\item%1
+{\it I would like you to try and reproduce some of the results in Table 9.10
+on page 395 in Waller and Gotway. They fit several models to the Scottish
+lipcancer data set. The ones I am interested in are models \(S+OD\) and the
+\(MGLM\). I want you to use \texttt{glmmPQL} to see if you can get close to
+their fitted results for \(S+OD\). I provide you with some code for fitting
+the nonlinear least squares model to see what you can come up with as an
+approximation to their \(MGLM\). We did something similar with the Virginia
+lead level data earlier (take a look back at page 50 or thereabouts). I have
+spent hours every time I teach this course trying to come close to their
+results. So I have two possible outcomes in mind here: (1) you (or some of
+you) are able to figure out where I am going wrong which I would love to see,
+and/or (2) you get a birds-eye view of the issues related to trying to
+incorporate spatial correlation structures into generalized linear models.}
+
+{\it The data set they provided on their website is attached. The last 2
+columns are the transformed spatial locations they discuss in the text. If you
+look at the SAS code they used they divided these by 1000. I encourage you to
+work together on this one. It will go much smoother. I would like for you all
+to be ready to discuss this on Friday. I have been a bit easy on the exact
+time homeworks are due, accepting several late over the course of the
+semester. But I want to be able to talk about this in class on Friday so you
+need to have them ready by class time.}
+
+<<data, echo = FALSE>>=
+lipcancer <- read.csv('lipcancer.WallerGotway.csv')
+
+# I'm mostly sticking to the same variable names as in their SAS code:
+#   http://web1.sph.emory.edu/users/lwaller/book/ch9/scotglms.sas
+lipcancer$aff1 <- lipcancer$aff/10
+lipcancer$logni <- log(lipcancer$exp)
+lipcancer$x <- lipcancer$xcoord/1000
+lipcancer$y <- lipcancer$ycoord/1000
+lipcancer$logsmr <- log(lipcancer$smr + 1)
+lipcancer$expct <- lipcancer$exp
+@
+
+I first spent some time trying to understand their semivariogram plot. They
+say they computed it from the studentized residuals of a WLS regression of
+\(\log(\texttt{SMR}+1)\) against \texttt{aff} using the expected counts as
+weights. I translated their SAS code to get the plot on the next page. Two
+counties are clear outliers with studentized residuals below \(-2\), and
+removing them yields a very different semivariogram. Waller and Gotway don't
+give any indication that they give these observations special handling, so
+for the purpose of replicating their results I do not omit them.
+
+<<data, eval = FALSE>>=
+@
+<<wls>>=
+# Weighted least squares regression.
+stat2 <- lm(logsmr ~ aff1, weights = expct, data = lipcancer)
+lipcancer$resids <- rstudent(stat2)
+
+plot(rstudent(stat2) ~ fitted(stat2), main = 'WLS Studentized Residuals vs Fitted Values')
+@
+
+Note that the smallest distance in the dataset is
+\Sexpr{sprintf('%.1f', min(dist(lipcancer[,c('x', 'y')])))} km, but their
+semivariogram has three points at distances smaller than that (the caption
+claims that the distances are indeed in km). It would seem like either they
+plotted the semivariogram of a different dataset or they rescaled the
+distances somehow. The largest distance is
+\Sexpr{sprintf('%.1f', max(dist(lipcancer[,c('x', 'y')])))} km,
+so I took a wild guess that they estimated the semivariogram up to about half
+the largest possible distance, and used units of 10 km for some reason. I
+eyeballed the distances on their plot and set manual bins, resulting in the
+plot on the next page. The vertical scales are slightly different, but the
+shape is very similar. At the top of page 395 they say there is negative
+dependence at 72 km to 105 km, but I don't know where they see that.
+
+<<plots, message = FALSE>>=
+# Trying to recreate their empirical semivariogram.
+resid_geodata <- as.geodata(lipcancer, coords.col = c('x', 'y'), data.col = 'resids')
+
+# uvec specifies the bin centers.
+resid_vario <- variog(resid_geodata, uvec = seq(0, 275, 25))
+plot(resid_vario, main = 'Empirical Semivariogram')
+@
+
+Next, I checked that I understood what I was doing by fitting their
+non-spatial models. The R Poisson regression results below match their SAS
+results.
+
+<<poisson>>=
+# Poisson regression without adjustment for overdispersion.
+PR <- glm(observed ~ aff1, family = poisson, offset = logni, data = lipcancer)
+summary(PR) # Agrees!
+@
+
+\pagebreak
+Their Poisson regression with overdispersion results are matched by a
+quasiPoisson regression in R, as seen below.
+
+<<quasipoisson>>=
+# Poisson regression with adjustment for overdispersion.
+PR_OD <- glm(observed ~ aff1, family = quasipoisson, offset = logni, data = lipcancer)
+summary(PR_OD) # Agrees!
+@
+
+The nonspatial model with uncorrelated random effects and ``adjusted for
+overdispersion'' is run-of-the-mill GLMM, because \texttt{glmmPQL} estimates
+a within-group residual variance parameter (even though that isn't strictly a
+``Poisson'' model because of the overdispersion parameter). The coefficients
+and standard errors match those in the book, and squaring the random effect
+and residual standard deviations gives values that are off from the variances
+in the book by only about 0.02.
+
+<<glmmi, message = FALSE>>=
+# Poisson GLMM adjusted for overdispersion.
+GLMMI <- glmmPQL(observed ~ aff1 + offset(logni), random = ~1|county,
+                 family = poisson, data = lipcancer)
+summary(GLMMI) # Coefs/SEs match, variances are close.
+@
+
+Waller and Gotway appear to construct non-overdispersed spatial models in SAS
+by fixing one of the covariance parameters, but I don't understand their
+\texttt{parms} statement. The effect of their \texttt{parms} statement might
+be to fix the nugget (within-county variance) at 1, but that is a wild guess.
+If that guess is correct, and if SAS uses the nugget as a variance multiplier
+(analogous to the quasiPoisson dispersion), then this should have the correct
+effect: conditional on the random intercept, the observed count has a Poisson
+distribution without overdispersion.
+
+I would construct these models by placing the correlation structure on the
+random effects, instead of placing it on the ``residuals'', and estimating the
+nugget. Unfortunately, I don't know of any R functions that allow that. So
+I'm skipping the non-overdispersion spatial mixed models.
+
+The spatial GLMM with overdispersion is confusing. The nugget should not be
+necessary because \texttt{glmmPQL} estimates a residual variance to account
+for overdispersion. I initially tried to include both parameters anyway; I
+played around with the \texttt{lmeControl} options and got a variety of
+cryptic error messages, and never got the optimizer to happily converge.
+
+When leaving out the nugget and using \texttt{optim} to do the optimization,
+\texttt{glmmPQL} finds estimates in only 7 reweighting iterations. The BFGS
+and L-BFGS algorithms both lead to the same estimates, but they are very
+different from the SAS results.
+
+With the \texttt{nlminb} optimizer, \texttt{glmmPQL} gets stuck in a feedback
+loop where the working response changes a bit every iteration, so the initial
+coefficient values change, then the final coefficient estimates for the
+iteration are different from the previous iteration, and so the working
+responses change again. One time I ran \texttt{glmmPQL} for 10,000 iterations
+and it showed no sign of converging. It's strange that it converges so easily
+using \texttt{optim}, so I am suspicious about the \texttt{optim} results and
+curious if SAS has convergence issues too.
+
+<<sod>>=
+# Conditional spatial GLMM adjusted for overdispersion, spherical covariance.
+#corr_S_OD <- corSpher(value = c(263, 0.38), form = ~x+y, nugget = TRUE)
+corr_S_OD <- corSpher(value = 263, form = ~x+y)
+corr_S_OD <- Initialize(corr_S_OD, lipcancer)
+S_OD <- glmmPQL(observed ~ aff1 + offset(logni), random = ~1|county,
+                correlation = corr_S_OD, family = poisson,
+                control = lmeControl(opt = 'optim', 'BFGS'),
+                data = lipcancer)
+summary(S_OD) # Way off...
+@
+
+Finally, I think the marginal model with overdispersion is conceptually the
+easiest to understand of their spatial models. It just allows nearby rates to
+be similar to each other, without going to the trouble of predicting a latent
+mean for each county. It's a relief than \texttt{gnls} gives the same
+estimates as SAS.
+
+<<mglm>>=
+# R code for MGLM.
+log.model <- function(x1, expct, b0, b1){exp(b0 + log(expct) + b1 * x1)}
+
+corr_MGLM <- corSpher(value = 53, form = ~x+y, nugget = FALSE)
+corr_MGLM <- Initialize(corr_MGLM, lipcancer)
+MGLM <- gnls(observed ~ log.model(aff1, expct, b0, b1),
+             data = lipcancer, start = c(b0 = -0.63, b1 = 0.74),
+             correlation = corr_MGLM,
+             weights = varPower(form = ~fitted(.), fixed = 0.5))
+summary(MGLM) # Agrees!
+@
+
+\end{enumerate}
+
+\end{document}
