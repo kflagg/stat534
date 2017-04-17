@@ -1,0 +1,292 @@
+\documentclass[11pt]{article}
+\usepackage{fullpage,graphicx,float,amsmath,enumitem,fancyhdr}
+
+\setlist{parsep=5.5pt}
+\setlength{\parindent}{0pt}
+
+\newcommand\assignment{Stat 534 Homework 10}
+\newcommand\myname{Kenny Flagg}
+\newcommand\duedate{April 17, 2017}
+
+\pagestyle{fancy}
+\lhead{\assignment}
+\chead{\duedate}
+\rhead{\myname}
+\setlength{\headheight}{18pt}
+\setlength{\headsep}{2pt}
+
+\title{\assignment}
+\author{\myname}
+\date{\duedate}
+
+\begin{document}
+\maketitle
+
+<<setup, echo = FALSE, message = FALSE, cache = FALSE>>=
+library(knitr)
+library(extrafont)
+opts_chunk$set(echo = TRUE, comment = NA, message = FALSE,
+               show.signif.stars = FALSE,
+               fig.align = 'center', fig.width = 6.5, fig.height = 4,
+               fig.pos = 'H', size = 'footnotesize', dev = 'pdf',
+               dev.args = list(family = 'CM Roman', pointsize = 11))
+knit_theme$set('print')
+
+library(xtable)
+options(xtable.floating = FALSE,
+        xtable.sanitize.rownames.function = function(x) x,
+        xtable.sanitize.colnames.function = function(x) x,
+        width = 80, scipen = 2, show.signif.stars = FALSE)
+
+set.seed(92387)
+@
+
+\begin{enumerate}
+
+\item%1
+{\it Empirical Bayes -- NC SIDS data: This is a well-known data set on the
+incidence of SIDS (Sudden Infant Death Syndrome) deaths in North Carolina. The
+data are available in the \texttt{nc.sids} data set in the \texttt{spdep}
+package. We will use emprical Bayes' methods to produce smoothed disease maps
+of SIDS incidence in the 1974-78 period. I have been letting you do most of
+the coding yourself this semester but getting the plots out for a problem like
+this is too much so you can use the R code below. Briefly discuss the results.
+In addition to the maps you can look at the raw SMR values and the smoothed
+estimates and summarize them in some meaningful way. I am particularly
+interested in counties in which the data dominate and counties in which the
+empirical Bayes' priors dominate. I will send an R script file with the code
+included also. I do not know what all those commands mean myself but I know
+they work.}
+
+<<prob1_1>>=
+library(maptools)
+library(spdep)
+library(rgdal)
+nc.sids <- readOGR(system.file('etc/shapes/sids.shp', package = 'spdep'), verbose = FALSE)
+proj4string(nc.sids) <- CRS('+proj=longlat +ellps=clrk66')
+# The IDs are just numbers...
+#row.names(nc.sids) <- sapply(slot(nc.sids, 'polygons'), function(x) slot(x, 'ID'))
+row.names(nc.sids) <- as.character(nc.sids$NAME) # County names.
+
+rn <- nc.sids$FIPSNO
+r <- sum(nc.sids$SID74) / sum(nc.sids$BIR74) 
+Expected <- nc.sids$BIR74 * r
+SMR <- nc.sids$SID74 / Expected
+
+require(DCluster)
+EB.pg <- empbaysmooth(nc.sids$SID74, Expected)$smthrr
+EB.LogN <- exp(lognormalEB(nc.sids$SID74, Expected)$smthrr)
+EB.Global <- EBest(nc.sids$SID74, Expected)$estmm
+ncCR85_nb <- read.gal(system.file('etc/weights/ncCR85.gal',
+                                  package = 'spdep' )[1], region.id = rn)
+EB.Local <- EBlocal(nc.sids$SID74, Expected, ncCR85_nb)$est
+
+nc <- cbind(nc.sids, SMR, EB.pg, EB.LogN, EB.Global, EB.Local)
+names(nc) <- c(names(nc.sids), 'SMR', 'PoissonGamma.EB', 'Lognormal.EB', 'Global.EB', 'Local.EB')
+row.names(nc) <- as.character(nc$NAME)
+spplot(nc, c('Global.EB', 'PoissonGamma.EB', 'Local.EB', 'Lognormal.EB', 'SMR'))
+@
+
+<<prob1_2, eval = FALSE>>=
+# Select 15 counties to show.
+counties <- sort(c('Anson', 'Dare', sample(as.character(nc$NAME), 13)))
+allSMRs <- data.frame(SMR = nc$SMR, `Local EB` = nc$Local.EB,
+                      `Lognormal EB` = nc$Lognormal.EB,
+                      `Poisson-Gamma EB` = nc$PoissonGamma.EB,
+                      `Global EB` = nc$Global.EB,
+                      row.names = nc$NAME, check.names = FALSE)
+xtable(allSMRs[counties,], digits = 4)
+@
+<<prob1_2, echo = FALSE, results = 'asis'>>=
+@
+<<prob1_3, eval = FALSE>>=
+meansds <- sapply(allSMRs, function(x){return(c(Min = min(x), Mean = mean(x),
+                                                Max = max(x), SD = sd(x)))})
+xtable(meansds, digits = 4)
+@
+\begin{center}
+<<prob1_3, echo = FALSE, results = 'asis'>>=
+@
+\end{center}
+
+All of the smoothing methods clearly get the job done, as all four methods
+result in adjecent counties generally having smoothed values that are more
+similar than their raw values. The Global method does the most smoothing
+(having the lowest standard deviation and the smallest range of smoothed
+values), but the Poisson-Gamma results are similar. The Local method does the
+least smoothing (biggest SD and range). Unsurprisingly, all the smoothing
+methods result in smoothed values with similar means as they all pull the
+observed SMRs toward the observed mean.
+
+Anson county is an outlier in raw SMR, and it dominates in the posterior for
+each method. For counties with low observed SMRs, the priors tend to dominate
+and pull the values toward the mean. The Lognormal method allows large SMRs to
+remain large, but still pulls low SMRs upward. The Local method behaves
+uniquely, actually smoothing some values \emph{away} from the mean when
+neighboring counties had more extreme observed SMRs (e.g. Davidson and Surrey
+counties). Local smoothing actually assigns one county (Dare) a smoothed value
+of 0 because it and its neighbors all have observed SMRs of zero.
+
+If I knew enough about SIDS to expect spatial autocorrelation, I would use
+Local smoothing to accomodate this. Otherwise, I would use either Lognormal or
+Global smoothing depending on whether or not I have prior information
+suggesting that large observed SMRs are real.
+
+\item%2
+{\it Continuing with the NC SIDS data. We assume the Poisson-Gamma model.}
+
+\begin{enumerate}
+
+\item%a
+{\it Find the posterior distribution assuming a more informative Gamma prior
+with \(\alpha = \beta = 4\).}
+
+We assume \(Y_{i}|\theta \sim \mathrm{Poisson}(E_{i}\theta)\),
+\(\theta \sim \mathrm{Gamma}(4, 4)\). We observe
+\(\sum_{i=1}^{n}y_{i} = \Sexpr{sum(nc$SID74)}\) SIDS cases in 1974 across all
+counties. I define the exposure to be the number of births in thousands, so
+the response and the exposure are on similar scales. Thus
+\(\sum_{i=1}^{n}E_{i} = \Sexpr{sum(nc$BIR74) / 1000}\).
+
+Then the posterior distribution is \(\theta|\mathbf{y} \sim \mathrm{Gamma}(
+\Sexpr{sum(nc$SID74) + 4},\, \Sexpr{sum(nc$BIR74) / 1000 + 4})\).
+
+<<prob2a1, eval = FALSE, echo = FALSE>>=
+hist(nc$SID74, breaks = 20, freq = FALSE, ylim = c(0, 1),
+     xlab = 'SIDS Cases', main = 'Distribution of SIDS Counts')
+curve(dgamma(x, 4, 4), n = 501, lty = 2, add = TRUE)
+curve(dgamma(x, sum(nc$SID74) + 4, sum(nc$BIR74) / 1000 + 4), n = 501, lty = 1, add = TRUE)
+legend('topright', lty = c(2, 1), legend = c('Prior', 'Posterior'))
+@
+
+\item%b
+{\it Find the posterior distribution assuming a non-informative Gamma prior
+with \(\alpha = \beta = 0.1\).}
+
+The posterior distribution is \(\theta|\mathbf{y} \sim \mathrm{Gamma}(
+\Sexpr{sum(nc$SID74) + 0.1}, \Sexpr{sum(nc$BIR74) / 1000 + 0.1})\).
+
+<<prob2a2, eval = FALSE, echo = FALSE>>=
+hist(nc$SID74, breaks = 20, freq = FALSE, ylim = c(0, 1),
+     xlab = 'SIDS Cases', main = 'Distribution of SIDS Counts')
+curve(dgamma(x, 0.1, 0.1), n = 501, from = 0.1, lty = 2, add = TRUE)
+curve(dgamma(x, sum(nc$SID74) + 0.1, sum(nc$BIR74) / 1000 + 0.1), n = 501, lty = 1, add = TRUE)
+legend('topright', lty = c(2, 1), legend = c('Prior', 'Posterior'))
+@
+
+\pagebreak
+\item%c
+{\it Summarize the role of the data and the prior in the posterior
+distributions by comparing the observed SMR and the posterior means from the
+2 Bayesian approaches. A plot would help and you should be able to modify the
+code above to produce those plots. Just add the vectors of the poterior
+distribution to \texttt{nc.sids} using \texttt{cbind} and then use
+\texttt{spplot} to get plots of SMR, and the pure Bayes' posterior means.}
+
+Both prior distributions have mean 1, and the observed SIDS counts have mean
+\Sexpr{mean(nc$SID74)}. The informative prior results in a posterior mean of
+\(\Sexpr{sum(nc$SID74) + 4} / \Sexpr{sum(nc$BIR74) / 1000 + 4}
+= \Sexpr{sprintf('%.3f', (sum(nc$SID74) + 4) / (sum(nc$BIR74) / 1000 + 4))}\)
+and the non-informative prior yields a posterior mean of
+\(\Sexpr{sum(nc$SID74) + 0.1} / \Sexpr{sum(nc$BIR74) / 1000 + 0.1} =
+\Sexpr{sprintf('%.3f', (sum(nc$SID74) + 0.1) / (sum(nc$BIR74) / 1000 + 0.1))}\).
+The informative prior pulls the posterior mean toward 1, but the data dominate
+over the non-informative prior resulting in a posterior mean close to the
+data mean.
+
+To make a smoothed spatial map, I use the hierarchical model where
+\(Y_{i}|\gamma_{i} \sim \mathrm{Poisson}(E_{i}\gamma_{i})\) and
+\(\gamma_{i} \sim \mathrm{Gamma}(\alpha, \beta)\). Then the posterior
+distribution for each county's mean is
+\(\gamma_{i}|y_{i} \sim \mathrm{Gamma}(\alpha + y_{i}, \beta + E_{i})\). The
+result is that the informative prior dominates (doing a lot of smoothing)
+while the non-informative prior allows the data to dominate (resulting in a
+map that is barely distinguishable from map of the data). To create maps on
+SMR scale, I multiplied the posterior means by the exposure and divided by the
+expected counts.
+
+<<prob2c2>>=
+nc.bayes <- cbind(nc,
+                  (nc$BIR74 / 1000) * (nc$SID74 + 0.1) / (nc$BIR74 / 1000 + 0.1) / Expected,
+                  (nc$BIR74 / 1000) * (nc$SID74 + 4) / (nc$BIR74 / 1000 + 4) / Expected)
+names(nc.bayes) <- c(names(nc), 'Non.Informative', 'Informative')
+spplot(nc.bayes, c('Non.Informative', 'Informative', 'SMR'))
+@
+
+\end{enumerate}
+
+\pagebreak
+\item%3
+{\it See the notes for the details on the Global Estimator (page 85). Marshall
+assumed, with \(E_{i}\) being the expected count that}
+\begin{equation*}
+Z_{i}|\gamma_{i} \sim \mathrm{Poi}(E_{i}\gamma_{i})
+\end{equation*}
+{\it but made no assumption about the distribution of the spatially varying
+relative risks or SMR values \(\gamma_{i}\). We denote the estimates of SMR by
+\(r_{i} = Z_{i} / E_{i}\). We make no distributional assumptions about the
+\(\gamma_{i}\) values but do assume that the prior means and variances exist.
+Denote them \(m_{\gamma_{i}}\) and \(v_{\gamma_{i}}\), respectively. Marshall
+found method-of-moments estimators of the marginal or unconditional mean and
+variance of the \(\gamma_{i}\).}
+
+\begin{enumerate}
+
+\item%a
+{\it Find the conditional mean and variance of \(r_{i}\). That is find
+\(E(r_{i}|\gamma_{i})\) and \(Var(r_{i}|\gamma_{i})\).}
+
+\vspace{-11pt}
+\begin{equation*}
+E(r_{i}|\gamma_{i}) = E\left(\left.\frac{Z_{i}}{E_{i}}\right|\gamma_{i}\right)
+= \frac{E(Z_{i}|\gamma_{i})}{E_{i}} = \frac{E_{i}\gamma_{i}}{E_{i}}
+= \gamma_{i}
+\end{equation*}
+\begin{equation*}
+Var(r_{i}|\gamma_{i})
+= Var\left(\left.\frac{Z_{i}}{E_{i}}\right|\gamma_{i}\right)
+= \frac{Var(Z_{i}|\gamma_{i})}{E_{i}^{2}}
+= \frac{E_{i}\gamma_{i}}{E_{i}^{2}}
+= \frac{\gamma_{i}}{E_{i}}
+\end{equation*}
+
+\item%b
+{\it Show that the marginal mean of \(r_{i}\) is equal to the prior mean of
+\(\gamma_{i}\).}
+
+\vspace{-11pt}
+\begin{align*}
+E(r_{i}) &= E(E(r_{i}|\gamma_{i})) \\
+&= \int_{0}^{\infty} E(r_{i}|\gamma_{i}) f(\gamma_{i}) d\gamma_{i} \\
+&= \int_{0}^{\infty} \gamma_{i} f(\gamma_{i}) d\gamma_{i} \\
+&= E(\gamma_{i})
+\end{align*}
+
+\item%c
+{\it Find the marginal variance of \(r_{i}\). (Hint: it will be a function of
+the prior mean and variance of \(\gamma_{i}\).)}
+
+\vspace{-11pt}
+\begin{align*}
+Var(r_{i}) &= E\left((r_{i} - E(r_{i}))^{2}\right) \\
+&= E\left((r_{i} - E(\gamma_{i}))^{2}\right) \\
+&= E\left(r_{i}^2\right) - (E(\gamma_{i}))^{2} \\
+&= E\left(E\left(r_{i}^2|\gamma_{i}\right)\right) - (E(\gamma_{i}))^{2} \\
+&= \int_{0}^{\infty} E\left(r_{i}^{2}|\gamma_{i}\right)
+f(\gamma_{i}) d\gamma_{i} - (E(\gamma_{i}))^{2} \\
+&= \int_{0}^{\infty} \left(Var\left(r_{i}|\gamma_{i}\right)
++ \left(E\left(r_{i}|\gamma_{i}\right)\right)^{2}\right)
+f(\gamma_{i}) d\gamma_{i} - (E(\gamma_{i}))^{2} \\
+&= \int_{0}^{\infty} \left(\frac{\gamma_{i}}{E_{i}}
++ \gamma_{i}^{2}\right)
+f(\gamma_{i}) d\gamma_{i} - (E(\gamma_{i}))^{2} \\
+&= E\left(\frac{\gamma_{i}}{E_{i}}\right) + E\left(\gamma_{i}^{2}\right)
+- (E(\gamma_{i}))^{2} \\
+&= \frac{E(\gamma_{i})}{E_{i}} + Var(\gamma_{i})
+\end{align*}
+
+\end{enumerate}
+
+\end{enumerate}
+
+\end{document}
